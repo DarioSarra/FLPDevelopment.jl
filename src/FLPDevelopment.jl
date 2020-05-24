@@ -1,7 +1,7 @@
 module FLPDevelopment
 
 using Reexport
-@reexport using FLPprocess, DataFrames, Dates, MixedModels, CSV
+@reexport using FLPprocess, DataFrames, Dates, MixedModels, CSV, StatsBase, StatsPlots, HypothesisTests
 import Distributions:Chisq
 
 
