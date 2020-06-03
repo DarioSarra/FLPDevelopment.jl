@@ -24,7 +24,7 @@ replace!(proj.PreInterpoke, missing => 0.0) # missing to 0 nothing to worry this
 filt = filter(r -> r.Num_pokes > 1 && # at least 2 pokes per trial
     r.Streak > 10 && #exclude the first 10 trials when they have no idea what is going on
     r.PreInterpoke <= 10 && # exclude streaks where the interpoke is longer than 10 seconds
-    r.Performance > 49, # exclude animlas that did less than 15 trials in their session
+    r.Performance > 49, # exclude animlas that did less than 50 trials in their session
     proj);
 ### this is for plotting the mean plus sem bar plot ###
 df1 = combine(:AfterLast => mean, groupby(filt,[:Combo, :MouseID]))
