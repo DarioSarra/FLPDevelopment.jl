@@ -35,3 +35,32 @@ const wt_animals = vcat(["NC"* string(i) for i in [1,2,3,4,9,10,11,12]],age_exp)
 const development_exp_below15_day1 = ["BN21","BN23","BN41","BN42","BN44","IT23","NB25","NB43","NB45"]
 const projection_exp_below15_day1 = ["CC9","NC10","NC12","NC14","RC3","RC8"]
 const below_thrs = vcat(development_exp_below15_day1,projection_exp_below15_day1)
+
+## Caspase Virus
+
+const VirusDict = Dict(
+    "CD06" => "Caspase",
+    "CD09" => "Caspase",
+    "CD10" => "Caspase",
+    "CD11" => "Caspase",
+    "CD13" => "Caspase",
+    "CD14" => "Caspase",
+    "CD15" => "Caspase",
+    "CD16" => "Caspase",
+    "CD05" => "Caspase",
+    "CD07" => "Caspase",
+    "CD08" => "Caspase",
+    "CD12" => "Caspase",
+    "CD02" => "tdTomato",
+    "CD04" => "tdTomato",
+    "CD17" => "tdTomato",
+    "CD18" => "tdTomato",
+    "CD19" => "tdTomato",
+    "CD20" => "tdTomato",
+    "CD21" => "tdTomato",
+    "CD22" => "tdTomato",
+    "CD01" => "tdTomato",
+    "CD03" => "tdTomato",
+    "CD23" => "tdTomato",
+    "CD24" => "tdTomato"
+)
