@@ -2,8 +2,16 @@
 
 # Directory = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/run_task_2/Test"
 # Directory = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/run_task_2/Dev_raw_data"
-path = "/Volumes/GoogleDrive/My Drive/Flipping/run_task_2/Dev_raw_data"
-path = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/BeatrizDevelopment"
+pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/BeatrizDevelopment"
+pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/BeatrizDevelopment"
+if ispath(pathMac)
+    path = pathMac
+elseif ispath(pathLin)
+    path = pathLin
+else
+    error("unknown path")
+end
+##
 Age_d, Age_p, Age_b, Age_s = process_dataset(path)
 ######### Filtering Datas #############
 for df in (Age_p, Age_b, Age_s)

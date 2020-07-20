@@ -1,6 +1,15 @@
 # using Revise, FLPDevelopment, BrowseTables
 
-path = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/CaspaseDevelopment"
+pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/CaspaseDevelopment"
+pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/CaspaseDevelopment"
+if ispath(pathMac)
+    path = pathMac
+elseif ispath(pathLin)
+    path = pathLin
+else
+    error("unknown path")
+end
+##
 Cas_d, Cas_p, Cas_b, Cas_s = process_dataset(path)
 
 for df in (Cas_p, Cas_b, Cas_s)
