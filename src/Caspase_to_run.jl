@@ -8,7 +8,7 @@ for df in (Cas_p, Cas_b, Cas_s)
     transform!(gd, :Streak => maximum => :Performance)
 end
 
-for df in (Cas_d, Cas_p, Cas_b, Cas_s)
+for df in (Cas_p, Cas_b, Cas_s)
     df[!,:Virus] = [get(VirusDict,x,"Missing") for x in df.MouseID]
 end
 
