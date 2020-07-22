@@ -22,46 +22,77 @@ levels!(Cas_s.Group,["Rbp4-cre\ntdTomato", "Rbp4-cre\nCaspase", "Wild Type",])
  Young vs Adults mice are in the Age labelled dataset (Age_p: pokes, Age_b: bouts Age_s: streaks)
  Caspase vs tdTomato mice are in the Cas labelled dataset (Cas_p: pokes, Cas_b: bouts Cas_s: streaks)
 =#
-##
+## Projection selection
 cas_df = filter(r->
     r.Gen == "Rbp4-cre" &&
     r.ProtocolSession == 1  &&
     r.AfterLast <= quantile(Cas_s.AfterLast,0.90),Cas_s)
-gd1 = groupby(cas_df,[:Virus,:MouseID])
-c1 = combine(:AfterLast => mean => :AfterLast,gd1)
+gdc = groupby(cas_df,[:Virus,:MouseID])
+c1 = combine(:AfterLast => mean => :AfterLast,gdc)
 c1[!,:xpos] = [v == "tdTomato" ? 1 : 2  for v in c1.Virus]
+crecas = filter(r -> r.Virus == "Caspase",c1).AfterLast
+cretd = filter(r -> r.Virus == "tdTomato",c1).AfterLast
+## test normality to decide between parametric or non parametric tests
+ExactOneSampleKSTest(crecas,Normal(mean(crecas),std(crecas)))
+ExactOneSampleKSTest(cretd,Normal(mean(cretd),std(cretd)))
+## calculate parametric stats
 c2 = combine(groupby(c1,:Virus)) do df
-    (Mean = mean(df.AfterLast), ERR = confint(OneSampleTTest(df.AfterLast))[2] - mean(df.AfterLast))
+    m = mean(df.AfterLast)
+    ci = (m - confint(OneSampleTTest(df.AfterLast))[1], confint(OneSampleTTest(df.AfterLast))[2] - m)
+    (Mean = mean(df.AfterLast), ERR = ci)
 end
 @df c2 scatter(1:nrow(c2),:Mean, yerror = :ERR,
     xlims = (0.5, nrow(c2) + 0.5),
     xticks = (1:nrow(c2),:Virus),
     legend = false)
 @df c1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
-crecas = filter(r -> r.Virus == "Caspase",c1).AfterLast
-cretd = filter(r -> r.Virus == "tdTomato",c1).AfterLast
-pvalue(EqualVarianceTTest(crecas,cretd))
+pvalue(UnequalVarianceTTest(crecas,cretd))
+## calculate nonparametric stats)
+c3 = combine(groupby(c1,:Virus)) do df
+    wci = confint(SignedRankTest(collect(df.AfterLast)))
+    med = median(df.AfterLast)
+    (Median = med, WERR = (med - wci[1],wci[2] - med))
+end
+@df c3 scatter(1:nrow(c3),:Median, yerror = :WERR,
+    xlims = (0.5, nrow(c3) + 0.5),
+    xticks = (1:nrow(c3),:Virus),
+    legend = false)
+@df c1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
 pvalue(MannWhitneyUTest(crecas,cretd))
-pvalue(ApproximateTwoSampleKSTest(crecas,cretd))
-##
+## Age selection
 age_df = filter(r->
     r.ProtocolSession == 1 &&
     r.AfterLast <= quantile(Cas_s.AfterLast,0.90),
     Age_s)
-gd1 = groupby(age_df,[:Gen,:MouseID])
-c1 = combine(:AfterLast => mean => :AfterLast,gd1)
-c1[!,:xpos] = [g == "Adult" ? 2 : 1  for g in c1.Gen]
-c2 = combine(groupby(c1,[:Gen])) do df
-    (Mean = mean(df.AfterLast), ERR = confint(OneSampleTTest(df.AfterLast))[2] - mean(df.AfterLast))
+gda = groupby(age_df,[:Gen,:MouseID])
+a1 = combine(:AfterLast => mean => :AfterLast,gda)
+a1[!,:xpos] = [g == "Adult" ? 2 : 1  for g in a1.Gen]
+young = filter(r -> r.Gen == "Young",a1).AfterLast
+adult = filter(r -> r.Gen == "Adult",a1).AfterLast
+## test normality to decide between parametric or non parametric tests
+ExactOneSampleKSTest(young,Normal(mean(young),std(young)))
+ExactOneSampleKSTest(cretd,Normal(mean(cretd),std(cretd)))
+## calculate parametric stats
+a2 = combine(groupby(a1,:Gen)) do df
+    m = mean(df.AfterLast)
+    ci = (m - confint(OneSampleTTest(df.AfterLast))[1], confint(OneSampleTTest(df.AfterLast))[2] - m)
+    (Mean = mean(df.AfterLast), ERR = ci)
 end
-
-@df c2 scatter(1:nrow(c2),:Mean, yerror = :ERR,
-    xlims = (0.5, nrow(c2) + 0.5),
-    xticks = (1:nrow(c2),:Gen),
+@df a2 scatter(1:nrow(a2),:Mean, yerror = :ERR,
+    xlims = (0.5, nrow(a2) + 0.5),
+    xticks = (1:nrow(a2),:Gen),
     legend = false)
-@df c1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
-young = filter(r -> r.Gen == "Young",c1).AfterLast
-adult = filter(r -> r.Gen == "Adult",c1).AfterLast
-pvalue(EqualVarianceTTest(young,adult))
-pvalue(MannWhitneyUTest(young,adult))
-pvalue(ApproximateTwoSampleKSTest(young,adult))
+@df a1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
+pvalue(UnequalVarianceTTest(crecas,cretd))
+## calculate nonparametric stats)
+a3 = combine(groupby(a1,:Gen)) do df
+    wci = confint(SignedRankTest(collect(df.AfterLast)))
+    med = median(df.AfterLast)
+    (Median = med, WERR = (med - wci[1],wci[2] - med))
+end
+@df a3 scatter(1:nrow(c3),:Median, yerror = :WERR,
+    xlims = (0.5, nrow(c3) + 0.5),
+    xticks = (1:nrow(c3),:Gen),
+    legend = false)
+@df a1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
+pvalue(MannWhitneyUTest(crecas,cretd))
