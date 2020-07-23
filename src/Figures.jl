@@ -66,7 +66,8 @@ age_df = filter(r->
     Age_s)
 gda = groupby(age_df,[:Gen,:MouseID])
 a1 = combine(:AfterLast => mean => :AfterLast,gda)
-a1[!,:xpos] = [g == "Adult" ? 2 : 1  for g in a1.Gen]
+sort!(a1,:Gen)
+a1[!,:xpos] = [g == "Adult" ? 1 : 2  for g in a1.Gen]
 young = filter(r -> r.Gen == "Young",a1).AfterLast
 adult = filter(r -> r.Gen == "Adult",a1).AfterLast
 ## test normality to decide between parametric or non parametric tests
@@ -78,13 +79,14 @@ a2 = combine(groupby(a1,:Gen)) do df
     ci = (m - confint(OneSampleTTest(df.AfterLast))[1], confint(OneSampleTTest(df.AfterLast))[2] - m)
     (Mean = mean(df.AfterLast), ERR = ci)
 end
+sort!(a2,:Gen)
 @df a2 scatter(1:nrow(a2),:Mean, yerror = :ERR,
     xlims = (0.5, nrow(a2) + 0.5),
     xticks = (1:nrow(a2),:Gen),
     legend = false)
 @df a1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
 pvalue(UnequalVarianceTTest(crecas,cretd))
-## calculate nonparametric stats)
+## calculate nonparametric stats
 a3 = combine(groupby(a1,:Gen)) do df
     wci = confint(SignedRankTest(collect(df.AfterLast)))
     med = median(df.AfterLast)
@@ -92,7 +94,11 @@ a3 = combine(groupby(a1,:Gen)) do df
 end
 @df a3 scatter(1:nrow(c3),:Median, yerror = :WERR,
     xlims = (0.5, nrow(c3) + 0.5),
+    # xticks = nothing,
     xticks = (1:nrow(c3),:Gen),
     legend = false)
 @df a1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
 pvalue(MannWhitneyUTest(crecas,cretd))
+##
+dvplot(cas_df,:Virus,:AfterLast)
+dvplot(age_df,:Gen,:AfterLast)
