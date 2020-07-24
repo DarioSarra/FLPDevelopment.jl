@@ -100,5 +100,21 @@ end
 @df a1 scatter!(:xpos,:AfterLast, markersize = 3, alpha = 0.5, color = :grey)
 pvalue(MannWhitneyUTest(crecas,cretd))
 ##
-dvplot(cas_df,:Virus,:AfterLast)
-dvplot(age_df,:Gen,:AfterLast)
+dvplot(cas_df,:Virus,:AfterLast; normality = true)
+dvplot(cas_df,:Virus,:AfterLast; normality = false)
+dvplot(age_df,:Gen,:AfterLast; normality = true)
+dvplot(age_df,:Gen,:AfterLast; normality = false)
+##
+dd1 = mouse_summary(cas_df,:Virus,:AfterLast)
+test_normality(dd1,:Virus,:AfterLast)
+##
+df = cas_df
+xvar = :Virus
+yvar = :AfterLast
+df1 = mouse_summary(df,xvar,yvar)
+normality = test_normality(df1,xvar,yvar)
+df2 = group_summary(df1,xvar,yvar; normality = normality)
+test = test_difference(df1)
+dvplot(df1,df2,test)
+##
+dvAnalysis(cas_df,:Virus,:AfterLast)
