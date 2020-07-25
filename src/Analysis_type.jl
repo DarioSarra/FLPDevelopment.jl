@@ -6,7 +6,7 @@ struct dvAnalysis
     plot
 end
 
-function dvAnalysis(df,xvar,yvar)
+function dvAnalysis(df,xvar,yvar; yspan = :auto)
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
         summary = fraction_true
@@ -17,6 +17,6 @@ function dvAnalysis(df,xvar,yvar)
     normality = test_normality(df1,xvar,yvar)
     df2 = group_summary(df1,xvar,yvar; normality = normality)
     test = test_difference(df1,xvar,yvar)
-    plt = dvplot(df1,df2,xvar,yvar,test)
+    plt = dvplot(df1,df2,xvar,yvar,test; yspan = yspan)
     dvAnalysis(df1, df2, normality, test, plt)
 end

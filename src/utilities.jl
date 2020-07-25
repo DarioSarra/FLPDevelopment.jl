@@ -50,20 +50,29 @@ function test_difference(df1,xvar,yvar;normality = true)
     return test
 end
 
-function dvplot(df1,df2,xvar,yvar,test)
+function dvplot(df1,df2,xvar,yvar,test; yspan = :auto)
     plt = @df df2 scatter(1:nrow(df2),:Central, yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),cols(xvar)),
         legend = false)
-    @df df1 scatter!(:xpos,cols(yvar), markersize = 3, alpha = 0.5, color = :grey)
+    @df df1 scatter!(:xpos,cols(yvar),
+        markersize = 3,
+        alpha = 0.5,
+        color = :grey,
+        ylims = yspan)
     if pvalue(test) < 0.05
-        println("in it")
         p = pvalue(test)
         message = p < 0.01 ? "p < 0.01" : "p < 0.05"
-        m1 = maximum(df1[:,yvar])
-        m2 = minimum(df1[:,yvar])
-        span = (m1-m2)/20
-        ref = m1 + span
+        if yspan == :auto
+            m1 = maximum(df1[:,yvar])
+            m2 = minimum(df1[:,yvar])
+            span = (m1-m2)/20
+            ref = m1 + span
+        else
+            span = (yspan[2] - yspan[1])/20
+            ref = yspan[2] - span
+        end
+
         plot!([1,1],[ref,ref+span])
         plot!([2,2],[ref,ref+span])
         plot!([1,2],[ref+span/2,ref+span/2])
