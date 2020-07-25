@@ -1,6 +1,10 @@
-function mouse_summary(df,xvar,yvar)
+function fraction_true(v::AbstractArray{Bool})
+    sum(v)/length(v)
+end
+
+function mouse_summary(df,xvar,yvar; summary = mean)
     gdc = groupby(df,[xvar,:MouseID])
-    df1 = combine(yvar => mean => yvar,gdc)
+    df1 = combine(yvar => summary => yvar,gdc)
     sort!(df1,xvar)
     firstval = union(df1[:,xvar])[1]
     df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
@@ -34,7 +38,7 @@ function group_summary(df1,xvar,yvar; normality = true)
     return df2
 end
 
-function test_difference(df1;normality = true)
+function test_difference(df1,xvar,yvar;normality = true)
     cases = union(df1[:,xvar])
     case1 = df1[df1[:,xvar] .== cases[1], yvar]
     case2 = df1[df1[:,xvar] .== cases[2], yvar]
@@ -46,7 +50,7 @@ function test_difference(df1;normality = true)
     return test
 end
 
-function dvplot(df1,df2,test)
+function dvplot(df1,df2,xvar,yvar,test)
     plt = @df df2 scatter(1:nrow(df2),:Central, yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),cols(xvar)),
@@ -54,7 +58,7 @@ function dvplot(df1,df2,test)
     @df df1 scatter!(:xpos,cols(yvar), markersize = 3, alpha = 0.5, color = :grey)
     if pvalue(test) < 0.05
         println("in it")
-        p = pvalue(significance)
+        p = pvalue(test)
         message = p < 0.01 ? "p < 0.01" : "p < 0.05"
         m1 = maximum(df1[:,yvar])
         m2 = minimum(df1[:,yvar])
