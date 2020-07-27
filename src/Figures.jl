@@ -51,3 +51,9 @@ savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Corr
 age_correct = dvAnalysis(age_df,:Age,:CorrectLeave, yspan = (0,1))
 age_correct.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/CorrectJuv.pdf")
+##
+p = plot(;legend = false)
+# from row 13 to 19
+poke_plot!(p,Cas_p[20,:])
+println(names(Cas_p))
+Cas_p[1,:Stim]
