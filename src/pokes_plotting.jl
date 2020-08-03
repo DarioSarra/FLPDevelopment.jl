@@ -9,8 +9,8 @@ function boxpoke(r::DataFrames.DataFrameRow)
         side = r.Side == "R" ? 0 : 1
     end
     y = (2 * side) - 1
-    start = r.PokeIn/1000
-    finish = r.PokeOut/1000
+    start = r.PokeIn
+    finish = r.PokeOut
     Shape([(start,0),(start,y),(finish,y),(finish,0),(start,0)])
 end
 

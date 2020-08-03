@@ -52,8 +52,29 @@ age_correct = dvAnalysis(age_df,:Age,:CorrectLeave, yspan = (0,1))
 age_correct.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/CorrectJuv.pdf")
 ##
+findall(.!(Cas_p.Reward) .& Cas_p.Correct)
 p = plot(;legend = false)
 # from row 13 to 19
-poke_plot!(p,Cas_p[20,:])
-println(names(Cas_p))
-Cas_p[1,:Stim]
+for i in 12:19
+    poke_plot!(p,Cas_p[i,:])
+end
+p
+##
+p = plot(;legend = false)
+for i in 403:405#321:333
+    poke_plot!(p,Cas_p[i,:])
+end
+p
+##
+
+findall(.!(cas_df.CorrectStart))
+i = 52
+idx = cas_df[i,:Streak]
+ses = cas_df[i,:Session]
+df1 = filter(r -> idx-1 <= r.Streak <= idx +1 && r.Session == ses, cas_df)
+df2 = filter(r -> idx-3 <= r.Streak <= idx +1 && r.Session == ses, Cas_p)
+p = plot(;legend = false)
+for r in eachrow(df2)
+    poke_plot!(p,r)
+end
+p
