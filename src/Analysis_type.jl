@@ -6,12 +6,17 @@ struct dvAnalysis
     plot
 end
 
-function dvAnalysis(df,xvar,yvar; yspan = :auto)
+function dvAnalysis(df,xvar,yvar; yspan = :auto, bs = false)
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
         summary = fraction_true
     else
-        summary = mean
+        if bs
+            println("here")
+            summary = bootstrap_mean
+        else
+            summary = mean
+        end
     end
     df1 = mouse_summary(df,xvar,yvar; summary = summary)
     normality = test_normality(df1,xvar,yvar)

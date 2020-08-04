@@ -34,6 +34,9 @@ for (a,f) in Afreq
     Aprob[a] = round(f/nrow(Cas_s),digits = 5)
 end
 Cas_s[!,:P_AfterLast] = [Aprob[a] for a in Cas_s.AfterLast]
+gd = groupby(Cas_s,:Session)
+transform!(gd, :AfterLast => frequency)
+
 
 # for (df,name) in zip([Cas_p, Cas_b, Cas_s],["Pokes", "Bouts", "Streaks"])
 #     filename = joinpath(path, "Results_" * string(today()),"FullInfo" * name * ".csv")
