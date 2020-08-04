@@ -16,7 +16,6 @@ end
  Caspase vs tdTomato mice are in the Cas labelled dataset (Cas_p: pokes, Cas_b: bouts Cas_s: streaks)
 =#
 ## Afterlast df selection
-
 cas_df = filter(r->
     r.Gen == "Rbp4-cre"&&
     r.ProtocolSession == 1 &&
@@ -79,18 +78,23 @@ yvar = :AfterLast_frequency
 gdc = groupby(cas_df,[xvar,:MouseID])
 df1 = combine(yvar => mean => yvar,gdc)
 sort!(df1,xvar)
-df2 = combine(groupby(df1,[xvar])) do dd
+df2 = DataFrame(AfterLast = Int[], Count = Int64[])
+for (k,i) in countmap(df1[:,xvar])
+    push!(df2, [k,i])
+end
+sort!(df2,xvar)
+limit = maximum(df2[df2.Count .>= floor(maximum(df2.Count) * 0.95),xvar])
+df3 = combine(groupby(df1,[xvar])) do dd
     m = mean(dd[:,yvar])
     SEM = sem(dd[:,yvar])
     (Central = m, ERR = SEM)
 end
-df3 = filter(r -> r.AfterLast <= 25, df2)
-df3
-@df df3 scatter(:AfterLast,:Central,
+df4 = filter(r -> r.AfterLast <= limit, df3)
+df4
+@df df4 scatter(:AfterLast,:Central,
     # group = :Virus,
     yerror = :ERR,
-    yticks = 0:0.05:0.4, xticks = 0:5:60, grid = true, linecolor = :auto, markersize = 3)
-sum(df3.Central)
+    yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true, linecolor = :auto, markersize = 3)
 ## Probability mass function Age
 age_df = filter(r->
     r.ProtocolSession == 1
@@ -100,14 +104,21 @@ yvar = :AfterLast_frequency
 gdc = groupby(age_df,[xvar,:MouseID])
 df1 = combine(yvar => mean => yvar,gdc)
 sort!(df1,xvar)
-df2 = combine(groupby(df1,[xvar])) do dd
+df2 = DataFrame(AfterLast = Int[], Count = Int64[])
+for (k,i) in countmap(df1[:,xvar])
+    push!(df2, [k,i])
+end
+sort!(df2,xvar)
+limit = maximum(df2[df2.Count .>= floor(maximum(df2.Count) * 0.95),xvar])
+df3 = combine(groupby(df1,[xvar])) do dd
     m = mean(dd[:,yvar])
     SEM = sem(dd[:,yvar])
     (Central = m, ERR = SEM)
 end
-df3 = filter(r -> r.AfterLast <= 25, df2)
-df3
-@df df3 scatter(:AfterLast,:Central,
+df4 = filter(r -> r.AfterLast <= limit, df3)
+df4
+@df df4 scatter(:AfterLast,:Central,
     # group = :Virus,
     yerror = :ERR,
-    yticks = 0:0.05:0.4, xticks = 0:5:60, grid = true, linecolor = :auto, markersize = 3)
+    yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true, linecolor = :auto, markersize = 3)
+## Travel time
