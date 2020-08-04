@@ -66,7 +66,6 @@ for i in 403:405#321:333
 end
 p
 ##
-
 findall(.!(cas_df.CorrectStart))
 i = 52
 idx = cas_df[i,:Streak]
@@ -76,5 +75,15 @@ df2 = filter(r -> idx-3 <= r.Streak <= idx +1 && r.Session == ses, Cas_p)
 p = plot(;legend = false)
 for r in eachrow(df2)
     poke_plot!(p,r)
+end
+p
+##
+cases = findall((Cas_p.Reward .== false) .& (Cas_p.Correct .== true) .& (Cas_p.PokeInStreak .== 2))
+##
+idx = cases[4]
+p = plot(;legend = false)
+# from row 13 to 19
+for i in idx - 3:idx + 3
+    poke_plot!(p,Cas_p[i,:])
 end
 p
