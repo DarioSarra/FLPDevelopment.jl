@@ -122,3 +122,42 @@ df4
     yerror = :ERR,
     yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true, linecolor = :auto, markersize = 3)
 ## Travel time
+limit = quantile(Cas_s.Travel_to,0.95)
+cas_df = filter(r->
+    r.Gen == "Rbp4-cre"&&
+    r.ProtocolSession == 1 &&
+    r.P_AfterLast >= 0.06 &&
+    r.Travel_to < limit
+    ,Cas_s)
+cas_travel = dvAnalysis(cas_df,:Virus,:Travel_to)
+cas_travel.plot
+##
+@df cas_df density(:Travel_to)
+##
+limit = quantile(Age_s.Travel_to,0.95)
+age_df = filter(r->
+    r.ProtocolSession == 1 &&
+    r.P_AfterLast >= 0.06 &&
+    r.Travel_to < limit
+    ,Age_s)
+age_travel = dvAnalysis(Age_s,:Gen,:Travel_to)
+age_travel.plot
+## Interpoke interval time
+limit = quantile(collect(skipmissing(Cas_p.PreInterpoke)),0.95)
+cas_df = filter(r ->
+    r.Gen == "HET" &&
+    r.ProtocolSession == 1 &&
+    !ismissing(r.PreInterpoke) &&
+    r.PreInterpoke < limit
+    ,Cas_p)
+cas_interpoke = dvAnalysis(cas_df,:Virus,:PreInterpoke)
+cas_interpoke.plot
+##
+limit = quantile(collect(skipmissing(Age_p.PreInterpoke)),0.95)
+age_df = filter(r ->
+    r.ProtocolSession == 1 &&
+    !ismissing(r.PreInterpoke) &&
+    r.PreInterpoke < limit
+    ,Age_p)
+age_interpoke = dvAnalysis(age_df,:Gen,:PreInterpoke)
+age_interpoke.plot
