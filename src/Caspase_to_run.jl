@@ -19,7 +19,12 @@ end
 
 for df in (Cas_p, Cas_b, Cas_s)
     df[!,:Virus] = [get(VirusDict,x,"Missing") for x in df.MouseID]
+    categorical!(df,:Virus)
 end
+levels!(Cas_p.Virus,["tdTomato", "Caspase"])
+levels!(Cas_b.Virus,["tdTomato", "Caspase"])
+levels!(Cas_s.Virus,["tdTomato", "Caspase"])
+
 
 Cas_s[!,:Gen] = [g == "HET" ? "Rbp4-cre" : "Wild Type" for g in Cas_s.Gen]
 Cas_s[!,:Combo] = Cas_s.Gen .* "\n" .* Cas_s.Virus
