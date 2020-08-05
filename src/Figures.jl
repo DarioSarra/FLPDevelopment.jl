@@ -75,7 +75,7 @@ cas_df = filter(r->
     ,Cas_s)
 xvar = :AfterLast
 yvar = :AfterLast_frequency
-gdc = groupby(cas_df,[xvar,:MouseID])
+gdc = groupby(cas_df,[xvar,:MouseID,:Virus])
 df1 = combine(yvar => mean => yvar,gdc)
 sort!(df1,xvar)
 df2 = DataFrame(AfterLast = Int[], Count = Int64[])
@@ -84,7 +84,7 @@ for (k,i) in countmap(df1[:,xvar])
 end
 sort!(df2,xvar)
 limit = maximum(df2[df2.Count .>= floor(maximum(df2.Count) * 0.95),xvar])
-df3 = combine(groupby(df1,[xvar])) do dd
+df3 = combine(groupby(df1,[xvar,:Virus])) do dd
     m = mean(dd[:,yvar])
     SEM = sem(dd[:,yvar])
     (Central = m, ERR = SEM)
@@ -92,18 +92,20 @@ end
 df4 = filter(r -> r.AfterLast <= limit, df3)
 df4
 @df df4 scatter(:AfterLast,:Central,
-    # group = :Virus,
+    group = :Virus,
     yerror = :ERR,
-    yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true, linecolor = :auto, markersize = 3)
+    yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true,
+    linecolor = :auto,
+    markersize = 3, legend = false, color_palette = [:red,:black])
 ##
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/PMFCas.pdf")
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SplitPMFCas.pdf")
 ## Probability mass function Age
 age_df = filter(r->
     r.ProtocolSession == 1
     ,Age_s)
 xvar = :AfterLast
 yvar = :AfterLast_frequency
-gdc = groupby(age_df,[xvar,:MouseID])
+gdc = groupby(age_df,[xvar,:MouseID,:Gen])
 df1 = combine(yvar => mean => yvar,gdc)
 sort!(df1,xvar)
 df2 = DataFrame(AfterLast = Int[], Count = Int64[])
@@ -111,8 +113,8 @@ for (k,i) in countmap(df1[:,xvar])
     push!(df2, [k,i])
 end
 sort!(df2,xvar)
-limit = maximum(df2[df2.Count .>= floor(maximum(df2.Count) * 0.95),xvar])
-df3 = combine(groupby(df1,[xvar])) do dd
+# limit = maximum(df2[df2.Count .>= floor(maximum(df2.Count) * 0.95),xvar])
+df3 = combine(groupby(df1,[xvar,:Gen])) do dd
     m = mean(dd[:,yvar])
     SEM = sem(dd[:,yvar])
     (Central = m, ERR = SEM)
@@ -120,11 +122,13 @@ end
 df4 = filter(r -> r.AfterLast <= limit, df3)
 df4
 @df df4 scatter(:AfterLast,:Central,
-    # group = :Virus,
+    group = :Gen,
     yerror = :ERR,
-    yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true, linecolor = :auto, markersize = 3)
+    yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true,
+    linecolor = :auto,
+    markersize = 3, legend = false, color_palette = [:black,:red])
 ##
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/PMFJuv.pdf")
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SplitPMFJuv.pdf")
 ## Travel time
 limit = quantile(Cas_s.Travel_to,0.95)
 cas_df = filter(r->
@@ -157,7 +161,7 @@ cas_df = filter(r ->
     !ismissing(r.PreInterpoke) &&
     r.PreInterpoke < limit
     ,Cas_p)
-cas_interpoke = dvAnalysis(cas_df,:Virus,:PreInterpoke; yspan = (0,3.5))
+cas_interpoke = dvAnalysis(cas_df,:Virus,:PreInterpoke; yspan = (0,6))
 cas_interpoke.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeCas.pdf")
@@ -168,7 +172,7 @@ age_df = filter(r ->
     !ismissing(r.PreInterpoke) &&
     r.PreInterpoke < limit
     ,Age_p)
-age_interpoke = dvAnalysis(age_df,:Gen,:PreInterpoke; yspan = (0,3.5))
+age_interpoke = dvAnalysis(age_df,:Gen,:PreInterpoke; yspan = (0,6))
 age_interpoke.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeJuv.pdf")
