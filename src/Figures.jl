@@ -31,11 +31,11 @@ age_df = filter(r->
     ,Age_s)
 maximum(age_df.AfterLast)
 ## Afterlast Plots
-cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; yspan = (0,3))
+cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; yspan = (1,2.5))
 # cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast)
 cas_afterlast.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastCas.pdf")
-age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; yspan = (0,2.5))
+age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; yspan = (1,2.5))
 # age_afterlast = dvAnalysis(age_df,:Age,:AfterLast)
 age_afterlast.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastJuv.pdf")
@@ -95,7 +95,7 @@ df4
     yerror = :ERR,
     yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true,
     linecolor = :auto,
-    markersize = 3, legend = false, color_palette = [:red,:black])
+    markersize = 3, legend = false, color_palette = [:black,:red,])
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SplitPMFCas.pdf")
 ## Probability mass function Age
@@ -121,7 +121,7 @@ end
 df4 = filter(r -> r.AfterLast <= limit, df3)
 df4
 @df df4 scatter(:AfterLast,:Central,
-    group = :Gen,
+    group = :Age,
     yerror = :ERR,
     yticks = 0:0.05:0.4, xticks = 0:1:60, grid = true,
     linecolor = :auto,
@@ -129,24 +129,29 @@ df4
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SplitPMFJuv.pdf")
 ## Travel time
-limit = quantile(Cas_s.Travel_to,0.95)
+pre_cas = filter(r -> 2 <= r.Travel_to <= 60, Cas_s)
+pre_cas[!,:Travel_to] = round.(pre_cas.Travel_to, digits = 2)
+@df pre_cas histogram(:Travel_to, bins = 100, xticks = 0:5:60, grid = true)
+limit = quantile(pre_cas.Travel_to,0.50)
 cas_df = filter(r->
     r.Gen == "Rbp4-cre"&&
-    r.P_AfterLast >= 0.06 &&
-    r.Travel_to < limit
-    ,Cas_s)
-cas_travel = dvAnalysis(cas_df,:Virus,:Travel_to; yspan = (0,22))
+    r.AfterLast <= 5 &&
+    2 <= r.Travel_to < 60
+    ,pre_cas)
+cas_travel = dvAnalysis(cas_df,:Virus,:Travel_to)
 cas_travel.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/TravelTimeCas.pdf")
-@df cas_df density(:Travel_to)
 ##
-limit = quantile(Age_s.Travel_to,0.95)
+pre_age = filter(r -> 1 <= r.Travel_to <= 60, Age_s)
+pre_age[!,:Travel_to] = round.(pre_age.Travel_to, digits = 2)
+@df pre_age histogram(:Travel_to, bins = 100, xticks = 0:5:60, grid = true)
+limit = quantile(pre_age.Travel_to,0.95)
 age_df = filter(r->
-    r.P_AfterLast >= 0.06 &&
-    r.Travel_to < limit
-    ,Age_s)
-age_travel = dvAnalysis(Age_s,:Age,:Travel_to, yspan = (0,22))
+    r.AfterLast <= 5 &&
+    r.Travel_to < 7
+    ,pre_age)
+age_travel = dvAnalysis(age_df,:Age,:Travel_to, yspan = (0,9))
 age_travel.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/TravelTimeJuv.pdf")
