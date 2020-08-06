@@ -133,24 +133,10 @@ pre_cas = filter(r -> 2 <= r.Travel_to <= 60, Cas_s)
 pre_cas[!,:Travel_to] = round.(pre_cas.Travel_to, digits = 2)
 @df pre_cas histogram(:Travel_to, bins = 100, xticks = 0:5:60, grid = true)
 @df pre_cas ea_histogram(:Travel_to, xticks = 0:5:60, grid = true)
-dist = Normal(mean(pre_cas.Travel_to),std(pre_cas.Travel_to))
-gdist = fit(Gamma,pre_cas.Travel_to)
-@df pre_cas qqplot(:Travel_to, dist,markersize = 3)
-@df pre_cas qqplot(:Travel_to, gdist,markersize = 3)
-chack = MixtureModel(Gamma[Gamma(2,1), Gamma(4,2)])
-cdf(gdist,12)
-obj = ecdf(pre_cas.Travel_to)
-obj(20)
-loglikelihood(gdist,pre_cas.Travel_to)
-loglikelihood(chack,pre_cas.Travel_to)
-@df pre_cas ea_histogram(:Travel_to, xticks = 0:5:60, grid = true)
-plot!(0:60,pdf(gdist,0:60)*3000)
-plot!(0:60,pdf(chack,0:60)*1000)
-limit = quantile(pre_cas.Travel_to,0.50)
 cas_df = filter(r->
     r.Gen == "Rbp4-cre"&&
     r.AfterLast <= 5 &&
-    2 <= r.Travel_to < 60
+    2 <= r.Travel_to < 13
     ,pre_cas)
 cas_travel = dvAnalysis(cas_df,:Virus,:Travel_to)
 cas_travel.plot
