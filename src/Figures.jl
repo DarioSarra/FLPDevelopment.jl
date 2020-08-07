@@ -131,14 +131,19 @@ savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Spli
 ## Travel time Caspase
 pre_cas = filter(r -> 1 <= r.Travel_to <= 60, Cas_s)
 pre_cas[!,:Travel_to] = round.(pre_cas.Travel_to, digits = 2)
-mix_travel = mixture_gamma(pre_cas.Travel_to)
+x = pre_cas.Travel_to
+mix_travel = mixture_gamma(x)
 p = @df pre_cas histogram(:Travel_to, nbins = 100,label = "data histogram")
 m = p.series_list[1].plotattributes[:y]
 scaling = maximum(filter(!isnan,m))/maximum(pdf(mix_travel,0:60))
 plot!(0:60,pdf(mix_travel,0:60)*scaling, label = "mixture distribution fit")
 ##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Travel_Mix_Gamma_fit_Cas.pdf")
+##
 @df pre_cas histogram(:Travel_to, nbins = 100, color = :grey, fillalpha = 0.3, linewidth = 0, label = "data histogram")
 histogram!(rand(mix_travel,length(x)), nbins = 100, fillalpha = 0.3, linewidth = 0, label = "simulation histogram")
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Travel_Mix_Gamma_simulation_Cas.pdf")
 ##
 lims = (0,0.135)
 plot(0:60,pdf(mix_travel,0:60),ylims = lims, linecolor = :magenta, label = "Convex combination")
@@ -146,6 +151,8 @@ plot!(0:60,pdf(mix_travel.components[2],0:60),ylims = lims, linecolor = :cyan, x
 plot!(0:60,pdf(mix_travel.components[1],0:60),ylims = lims, linecolor = :red, label = "Second component")
 q95 = quantile(mix_travel.components[2],0.95)
 vline!([q95], label = "95th percentile\nfirst component")
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Travel_Mix_Gamma_selection_criteria_Cas.pdf")
 ##
 cas_df = filter(r->
     r.Gen == "Rbp4-cre"&&
@@ -156,51 +163,41 @@ cas_travel = dvAnalysis(cas_df,:Virus,:Travel_to)
 cas_travel.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/TravelTimeCas.pdf")
-##
 ## Travel time Age
 pre_age = filter(r -> 1 <= r.Travel_to <= 60, Age_s)
 pre_age[!,:Travel_to] = round.(pre_age.Travel_to, digits = 2)
-mix_travel = mixture_gamma(pre_age.Travel_to)
-
+x = pre_age.Travel_to
+mix_travel = mixture_gamma(x)
 p = @df pre_age histogram(:Travel_to, nbins = 100,label = "data histogram")
 m = p.series_list[1].plotattributes[:y]
-scaling = maximum(filter(!isnan,m))/maximum(pdf(mix_travel,0:60))
-
-plot!(0:60,pdf(mix_travel,0:60)*scaling, label = "mixture distribution fit")
-plot(0:60,pdf(mix_travel,0:60), label = "mixture distribution fit")
-
+scaling = maximum(filter(!isnan,m))/maximum(pdf(mix_travel,1:60))
+pdf(mix_travel,1)
+plot!(1:60,pdf(mix_travel,1:60)*scaling, label = "mixture distribution fit")
+pure_travel = fit(Exponential,x)
+scaling = maximum(filter(!isnan,m))/maximum(pdf(pure_travel,1:60))
+plot!(1:60,pdf(pure_travel,1:60)*scaling, label = "Exponential",linecolor = :cyan)
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Travel_Mix_Gamma_fit_Juv.pdf")
 ##
 @df pre_age histogram(:Travel_to, nbins = 100, color = :grey, fillalpha = 0.3, linewidth = 0, label = "data histogram")
-histogram!(rand(mix_travel,length(x)), nbins = 100, fillalpha = 0.3, linewidth = 0, label = "simulation histogram")
+histogram!(rand(pure_travel,length(x)), nbins = 100, fillalpha = 0.3, linewidth = 0, label = "simulation histogram")
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Travel_Mix_Gamma_simulation_Cas.pdf")
 ##
 lims = (0,0.135)
-plot(0:60,pdf(mix_travel,0:60),ylims = lims, linecolor = :magenta, label = "Convex combination")
-plot!(0:60,pdf(mix_travel.components[2],0:60),ylims = lims, linecolor = :cyan, xticks = 0:5:60, label = "First component")
-plot!(0:60,pdf(mix_travel.components[1],0:60),ylims = lims, linecolor = :red, label = "Second component")
-q95 = quantile(mix_travel.components[2],0.95)
+plot(0:60,pdf(pure_travel,0:60),ylims = lims, linecolor = :magenta, label = "Exponential")
+q95 = quantile(pure_travel,0.95)
 vline!([q95], label = "95th percentile\nfirst component")
 ##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Travel_Mix_Gamma_selection_criteria_Cas.pdf")
+##
 cas_df = filter(r->
-    r.Gen == "Rbp4-cre"&&
     r.AfterLast <= 5 &&
     2 <= r.Travel_to < q95
     ,pre_age)
-cas_travel = dvAnalysis(cas_df,:Virus,:Travel_to)
+cas_travel = dvAnalysis(cas_df,:Age,:Travel_to)
 cas_travel.plot
-##
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/TravelTimeCas.pdf")
-pre_age = filter(r -> 1 <= r.Travel_to <= 60, Age_s)
-pre_age[!,:Travel_to] = round.(pre_age.Travel_to, digits = 2)
-@df pre_age histogram(:Travel_to, bins = 100, xticks = 0:5:60, grid = true)
-limit = quantile(pre_age.Travel_to,0.95)
-age_df = filter(r->
-    r.AfterLast <= 5 &&
-    r.Travel_to < 7
-    ,pre_age)
-age_travel = dvAnalysis(age_df,:Age,:Travel_to, yspan = (0,9))
-age_travel.plot
-##
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/TravelTimeJuv.pdf")
+
 ## Interpoke interval time
 limit = quantile(collect(skipmissing(Cas_p.PreInterpoke)),0.95)
 cas_df = filter(r ->
