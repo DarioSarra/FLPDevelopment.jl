@@ -46,7 +46,7 @@ function test_difference(df1,xvar,yvar;normality = true)
     return test
 end
 
-function dvplot(df1,df2,xvar,yvar,test; yspan = :auto)
+function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto)
     plt = @df df2 scatter(1:nrow(df2),:Central, yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),cols(xvar)),
@@ -55,7 +55,8 @@ function dvplot(df1,df2,xvar,yvar,test; yspan = :auto)
         markersize = 3,
         alpha = 0.5,
         color = :grey,
-        ylims = yspan)
+        ylims = yspan,
+        yticks = ystep)
     if pvalue(test) < 0.05
         p = pvalue(test)
         message = p < 0.01 ? "p < 0.01" : "p < 0.05"

@@ -20,6 +20,6 @@ export median, std, kde, dvAnalysis
 export fraction_true, bootstrap_mean, frequency
 export mouse_summary,  group_summary, dvplot
 export poke_plot!
-export mixture_gamma, mixture_gamma_weighted
+export mixture_gamma, mixture_gamma_weighted, mixture_exp, mixture_exp_weighted
 
 end # module
