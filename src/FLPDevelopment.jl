@@ -14,7 +14,7 @@ include("test_plotting.jl")
 include("pokes_plotting.jl")
 include("Mixture_fit.jl")
 
-export youngs, age_exp, cnos_animals, wt_animals, below_thrs, VirusDict
+export youngs,dario_youngs, age_exp, cnos_animals, wt_animals, below_thrs, VirusDict
 export Likelyhood_Ratio_test, AIC_test, AICc_test
 export median, std, kde, dvAnalysis
 export fraction_true, bootstrap_mean, frequency

@@ -5,7 +5,7 @@ gr(size=(600,600), tick_orientation = :out, grid = false,
     thickness_scaling = 2,
     markersize = 8)
 ##
-include("Young_to_run.jl")
+include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
 for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
@@ -30,12 +30,13 @@ age_df = filter(r->
     # r.AfterLast_frequency >= 0.05
     ,Age_s)
 maximum(age_df.AfterLast)
-## Afterlast Plots
-cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; yspan = (1,2.5))
+age_df
+########################### Afterlast Plots ######################################
+cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; yspan = (1,3))
 # cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast)
 cas_afterlast.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastCas.pdf")
-age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; yspan = (1,2.5))
+age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; yspan = (1,3))
 # age_afterlast = dvAnalysis(age_df,:Age,:AfterLast)
 age_afterlast.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastJuv.pdf")
@@ -48,7 +49,9 @@ cas_df = filter(r->
 age_df = filter(r->
     r.ProtocolSession == 1
     ,Age_s)
-## Probability Plots
+
+
+###################### Probability Plots #########################################
 cas_correct = dvAnalysis(cas_df,:Virus,:CorrectLeave,yspan = (0,1))
 cas_correct.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/CorrectCas.pdf")
@@ -56,7 +59,9 @@ age_correct = dvAnalysis(age_df,:Age,:CorrectLeave, yspan = (0,1))
 age_correct.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/CorrectJuv.pdf")
 
-## Pokes  example
+
+
+############################ Pokes  example #################################
 cases = findall((Cas_p.Reward .== false) .& (Cas_p.Correct .== true) .& (Cas_p.PokeInStreak .== 2))
 cases = findall((Age_p.Reward .== false) .& (Age_p.Correct .== true) .& (Age_p.PokeInStreak .== 2))
 ##
@@ -67,7 +72,9 @@ for i in idx - 3:idx + 3
     poke_plot!(p,Age_p[i,:])
 end
 p
-## Probability mass function Caspase
+
+##################### Probability mass function ####################################
+# Caspase
 cas_df = filter(r->
     r.Gen == "Rbp4-cre"&&
     r.ProtocolSession == 1
@@ -128,7 +135,59 @@ df4
     markersize = 3, legend = false, color_palette = [:black,:red])
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SplitPMFJuv.pdf")
-## Travel time Caspase
+
+
+
+###################### Interpoke interval time ####################################
+# Caspase
+limit = quantile(collect(skipmissing(Cas_p.PreInterpoke)),0.95)
+cas_df = filter(r ->
+    r.Gen == "HET" &&
+    !ismissing(r.PreInterpoke) &&
+    r.PreInterpoke < 1
+    ,Cas_p)
+cas_interpoke = dvAnalysis(cas_df,:Virus,:PreInterpoke; yspan = (0.1,0.5))
+cas_interpoke.plot
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeCas.pdf")
+## Interpoke interval time Age
+limit = quantile(collect(skipmissing(Age_p.PreInterpoke)),0.95)
+age_df = filter(r ->
+    !ismissing(r.PreInterpoke) &&
+    r.PreInterpoke < 1
+    ,Age_p)
+age_interpoke = dvAnalysis(age_df,:Age,:PreInterpoke; yspan = (0.1,0.5))
+age_interpoke.plot
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeJuv.pdf")
+
+
+######################### Simple Travel time #######################################
+# Caspase
+limit = quantile(collect(skipmissing(Cas_s.Travel_to)),0.95)
+cas_df = filter(r ->
+    !ismissing(r.Travel_to) &&
+    r.Travel_to < limit
+    ,Cas_s)
+cas_interpoke = dvAnalysis(cas_df,:Virus,:Travel_to; yspan = (8,33))
+cas_interpoke.plot
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SimpleTravelCas.pdf")
+## Age
+limit = quantile(collect(skipmissing(Age_s.Travel_to)),0.95)
+age_df = filter(r ->
+    !ismissing(r.Travel_to) &&
+    r.Travel_to < limit
+    ,Age_s)
+age_interpoke = dvAnalysis(age_df,:Age,:Travel_to; yspan = (8,33))
+age_interpoke.plot
+##
+savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SimpleTravelJuv.pdf")
+
+
+
+######################### Complex Travel time #######################################
+#Caspase
 pre_cas = filter(r -> 0 < r.Travel_to <= 60, Cas_s)
 pre_cas[!,:Travel_to] = round.(pre_cas.Travel_to, digits = 2)
 x = pre_cas.Travel_to
@@ -213,30 +272,9 @@ savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Trav
 q05 = quantile(mix_travel.components[1],0.05)
 ag_df = filter(r->
     r.AfterLast <= 5 &&
-    r.Travel_to < q05
+    r.Travel_to > q05
     ,pre_age)
-age_travel = dvAnalysis(cas_df,:Age,:Travel_to)
+age_travel = dvAnalysis(ag_df,:Age,:Travel_to)
 age_travel.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SecondTravelTimeJuv.pdf")
-## Interpoke interval time
-limit = quantile(collect(skipmissing(Cas_p.PreInterpoke)),0.95)
-cas_df = filter(r ->
-    r.Gen == "HET" &&
-    !ismissing(r.PreInterpoke) &&
-    r.PreInterpoke < limit
-    ,Cas_p)
-cas_interpoke = dvAnalysis(cas_df,:Virus,:PreInterpoke; yspan = (0,7))
-cas_interpoke.plot
-##
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeCas.pdf")
-##
-limit = quantile(collect(skipmissing(Age_p.PreInterpoke)),0.95)
-age_df = filter(r ->
-    !ismissing(r.PreInterpoke) &&
-    r.PreInterpoke < limit
-    ,Age_p)
-age_interpoke = dvAnalysis(age_df,:Age,:PreInterpoke,; yspan = (0,7))
-age_interpoke.plot
-##
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeJuv.pdf")
