@@ -16,6 +16,7 @@ Age_d, Age_p, Age_b, Age_s = process_dataset(path)
 ######### Filtering Datas #############
 for df in (Age_p, Age_b, Age_s)
     df[!,:Age] = [x in dario_youngs ? "Juveniles" : "Adults" for x in df.MouseID]
+    df[!,:Sex] = [x in females ? "F" : "M" for x in df.MouseID]
     gd = groupby(df,:Session)
     transform!(gd, :Streak => maximum => :Performance)
 end
