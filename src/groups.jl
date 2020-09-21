@@ -22,7 +22,13 @@ const age_exp = vcat(Nbs,Bns,Its)
 
 # specifies which animals in age_exp are young
 const youngs = ["BN21", "BN22", "BN41", "BN42", "IT21", "IT22","IT41", "IT42", "NB21", "NB22","NB23","NB41","NB42"]
-const dario_youngs = ["DJ01", "DJ02", "DJ03", "DJ04", "DJ05", "DJ06", "DJ07", "DJ08", "DJ09", "DJ10", "DJ11", "DJ12"]
+const dario_youngs = ["RJ01", "RJ02", "RJ03", "RJ04", "RJ05", "RJ06", "RJ07", "RJ08", "RJ09", "RJ10", "RJ11", "RJ12",
+    "RJ25", "RJ26", "RJ27", "RJ28", "RJ29", "RJ30", "RJ31", "RJ32", "RJ33", "RJ34", "RJ35", "RJ36"]
+
+# specifies sex
+const females = ["RJ25", "RJ26", "RJ27", "RJ28", "RJ29", "RJ30", "RJ31", "RJ32", "RJ33", "RJ34", "RJ35", "RJ36",
+    "RJ37", "RJ38", "RJ39", "RJ40", "RJ41", "RJ42", "RJ43", "RJ44", "RJ45", "RJ46", "RJ47", "RJ48",
+    "CD03", "CD04", "CD07", "CD08", "CD11", "CD12", "CD14", "CD15", "CD16", "CD20", "CD21", "CD22"]
 
 # Treatment information
 # animals treated with CNO
