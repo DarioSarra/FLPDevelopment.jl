@@ -11,8 +11,10 @@ function test_normality(df1,xvar,yvar)
     cases = union(df1[:,xvar])
     case1 = df1[df1[:,xvar] .== cases[1], yvar]
     case2 = df1[df1[:,xvar] .== cases[2], yvar]
-    n1 = pvalue(ExactOneSampleKSTest(case1,Normal(mean(case1),std(case1)))) >= 0.05
-    n2 = pvalue(ExactOneSampleKSTest(case2,Normal(mean(case2),std(case2)))) >= 0.05
+    n1 = pvalue(JarqueBeraTest(case1)) >= 0.05
+    n2 = pvalue(JarqueBeraTest(case2)) >= 0.05
+    # n1 = pvalue(ExactOneSampleKSTest(case1,Normal(mean(case1),std(case1)))) >= 0.05
+    # n2 = pvalue(ExactOneSampleKSTest(case2,Normal(mean(case2),std(case2)))) >= 0.05
     all((n1,n2))
 end
 
