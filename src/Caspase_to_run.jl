@@ -20,6 +20,7 @@ end
 for df in (Cas_p, Cas_b, Cas_s)
     df[!,:Virus] = [get(VirusDict,x,"Missing") for x in df.MouseID]
     df[!,:Sex] = [x in females ? "F" : "M" for x in df.MouseID]
+    df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
     categorical!(df,:Virus)
 end
 levels!(Cas_p.Virus,["tdTomato", "Caspase"])
