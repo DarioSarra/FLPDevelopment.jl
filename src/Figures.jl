@@ -14,43 +14,47 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
 end
 ##
 #=
+to do list
+- single animal distributions
+- group median and ci plus mean animal afterlast plot
+- CD9 interpoke, trial duaration and travel time against Rbp4
+- CD9 long trials interpoke, trial duaration and travel time against short trials
+- CD9 video
+=#
+#=
  Young vs Adults mice are in the Age labelled dataset (Age_p: pokes, Age_b: bouts Age_s: streaks)
  Caspase vs tdTomato mice are in the Cas labelled dataset (Cas_p: pokes, Cas_b: bouts Cas_s: streaks)
 =#
 ## Afterlast df selection
 cas_df = filter(r->
-    r.Gen == "Rbp4-cre"&&
-    # r.P_AfterLast >= 0.06
-    r.AfterLast <= 5
+    r.Gen == "Rbp4-cre" &&
+    # r.Performance == 25 &&
+    r.MouseID != "CD09"
+    # r.PreInterpoke <= 1
+    # r.AfterLast <= 6
     # r.AfterLast_frequency >= 0.05
     ,Cas_s)
 age_df = filter(r->
     # r.P_AfterLast >= 0.06
-    r.AfterLast <= 5
+    r.Sex != "c"
+    # r.Performance >= 25
+    # r.PreInterpoke <= 1
     # r.AfterLast_frequency >= 0.05
     ,Age_s)
 maximum(age_df.AfterLast)
 age_df
+open_html_table(cas_df)
+mouse_summary(cas_df,:Virus,:AfterLast)
 ########################### Afterlast Plots ######################################
-cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; yspan = (1,3))
+cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; nonparametric = true, yspan = (0,6))
 # cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast)
 cas_afterlast.plot
+cas_afterlast.normality
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastCas.pdf")
-age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; yspan = (1,3))
+age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; nonparametric = true)#; yspan = (1,3)
 # age_afterlast = dvAnalysis(age_df,:Age,:AfterLast)
 age_afterlast.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastJuv.pdf")
-## Probability df selection
-cas_df = filter(r->
-    r.Gen == "Rbp4-cre"&&
-    r.ProtocolSession == 1
-    ,Cas_s)
-
-age_df = filter(r->
-    r.ProtocolSession == 1
-    ,Age_s)
-
-
 ###################### Probability Plots #########################################
 cas_correct = dvAnalysis(cas_df,:Virus,:CorrectLeave,yspan = (0,1))
 cas_correct.plot
@@ -75,10 +79,10 @@ p
 
 ##################### Probability mass function ####################################
 # Caspase
-cas_df = filter(r->
-    r.Gen == "Rbp4-cre"&&
-    r.ProtocolSession == 1
-    ,Cas_s)
+# cas_df = filter(r->
+#     r.Gen == "Rbp4-cre"&&
+#     r.ProtocolSession == 1
+#     ,Cas_s)
 xvar = :AfterLast
 yvar = :AfterLast_frequency
 gdc = groupby(cas_df,[xvar,:MouseID,:Virus])
@@ -95,7 +99,7 @@ df3 = combine(groupby(df1,[xvar,:Virus])) do dd
     SEM = sem(dd[:,yvar])
     (Central = m, ERR = SEM)
 end
-df4 = filter(r -> r.AfterLast <= limit, df3)
+df4 = filter(r -> r.AfterLast <= 15 #=limit=#, df3)
 df4
 @df df4 scatter(:AfterLast,:Central,
     group = :Virus,
