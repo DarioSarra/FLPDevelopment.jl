@@ -18,7 +18,7 @@ export youngs,dario_youngs, females, age_exp, cnos_animals, wt_animals, below_th
 export Likelyhood_Ratio_test, AIC_test, AICc_test
 export median, std, kde, dvAnalysis, DoubleAnalysis
 export fraction_true, bootstrap_mean, frequency
-export mouse_summary,  group_summary, dvplot
+export mouse_summary,  group_summary, dvplot, check_cd9
 export poke_plot!
 export mixture_gamma, mixture_gamma_weighted, mixture_exp, mixture_exp_weighted
 

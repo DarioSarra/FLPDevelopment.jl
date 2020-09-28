@@ -81,3 +81,22 @@ function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto)
     end
     return plt
 end
+
+function check_cd9(df,xvar)
+    p = plot(; label = false)
+    for m in union(df.MouseID)
+        lc = m == "CD09" ? :red : :grey
+        @df filter(r -> r.MouseID == m,df) density!(cols(xvar), linecolor = lc,label = false)
+    end
+    p
+end
+
+function check_cd9(df,xvar, yvar)
+    p = plot(; label = false)
+    for m in union(df.MouseID)
+        lc = m == "CD09" ? :red : :grey
+        @df filter(r -> r.MouseID == m,df) scatter!(cols(xvar), cols(yvar), markercolor = lc,
+        label = false, markersize = 2)
+    end
+    p
+end
