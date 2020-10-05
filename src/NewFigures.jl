@@ -9,8 +9,9 @@ include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
 for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
-    r.MouseID != "RJ58" &&
-    r.MouseID != "CD09" &&
+    r.MouseID != "RJ58" && # blind
+    r.MouseID != "CD09" && # biting see B1_CD09_2020-07-13 minute30
+    !(r.MouseID in sixty_days_old) &&
     r.ProtocolSession == 1
     ,df)
 end

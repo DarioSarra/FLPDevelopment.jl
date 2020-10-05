@@ -33,6 +33,8 @@ const females = ["RJ25", "RJ26", "RJ27", "RJ28", "RJ29", "RJ30", "RJ31", "RJ32",
     "RJ61", "RJ62", "RJ63", "RJ64", "RJ65", "RJ66", "RJ67", "RJ68", "RJ69", "RJ70",
     "CD03", "CD04", "CD07", "CD08", "CD11", "CD12", "CD14", "CD15", "CD16", "CD20", "CD21", "CD22"]
 
+const sixty_days_old = ["RJ37", "RJ38", "RJ39", "RJ40", "RJ41", "RJ42", "RJ43", "RJ44", "RJ45", "RJ46", "RJ47", "RJ48"]
+
 # Treatment information
 # animals treated with CNO
 const cnos_animals = vcat(Ncs,Ccs,Rcs)
