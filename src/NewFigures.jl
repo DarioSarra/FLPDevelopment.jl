@@ -10,7 +10,11 @@ include("Caspase_to_run.jl")
 for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
     r.MouseID != "RJ58" && # blind
-    r.MouseID != "CD09" && # biting see B1_CD09_2020-07-13 minute30
+    r.MouseID != "CD09" && # biting, see B1_CD09_2020-07-13 minute30
+    r.MouseID != "RJ27" && # water leak
+    r.MouseID != "RJ35" && # water leak
+    r.MouseID != "RJ43" && # water leak
+    r.MouseID != "RJ57" && # biting, see B1_RJ57_2020-09-28 minute 20:38
     !(r.MouseID in sixty_days_old) &&
     r.ProtocolSession == 1
     ,df)
@@ -40,6 +44,7 @@ fm2 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Age + (1|MouseID)),age_df))
 fm3 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Age + Sex + (1|MouseID)),age_df))
 Likelyhood_Ratio_test(fm1,fm2)
 Likelyhood_Ratio_test(fm2,fm3)
+open_html_table(age_afterlast.mice_summary)
 #=
 Likelihood ratio test on
 AfterLast ~ 1 + Age + (1|MouseID) versus AfterLast ~ 1 + (1|MouseID): p < 0.01,
