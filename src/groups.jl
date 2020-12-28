@@ -32,7 +32,10 @@ const females = ["RJ25", "RJ26", "RJ27", "RJ28", "RJ29", "RJ30", "RJ31", "RJ32",
     "RJ49", "RJ50", "RJ51", "RJ52", "RJ53", "RJ54", "RJ55", "RJ56", "RJ57", "RJ58", "RJ59", "RJ60",
     "RJ61", "RJ62", "RJ63", "RJ64", "RJ65", "RJ66", "RJ67", "RJ68", "RJ69", "RJ70",
     "CD03", "CD04", "CD07", "CD08", "CD11", "CD12", "CD14", "CD15", "CD16", "CD20", "CD21", "CD22"]
-
+const first_females_group = ["RJ25", "RJ26", "RJ27", "RJ28", "RJ29", "RJ30", "RJ31", "RJ32", "RJ33", "RJ34", "RJ35", "RJ36",
+    "RJ37", "RJ38", "RJ39", "RJ40", "RJ41", "RJ42", "RJ43", "RJ44", "RJ45", "RJ46", "RJ47", "RJ48"]
+const second_females_group = ["RJ49", "RJ50", "RJ51", "RJ52", "RJ53", "RJ54", "RJ55", "RJ56", "RJ57", "RJ58", "RJ59", "RJ60",
+    "RJ61", "RJ62", "RJ63", "RJ64", "RJ65", "RJ66", "RJ67", "RJ68", "RJ69", "RJ70"]
 const sixty_days_old = ["RJ37", "RJ38", "RJ39", "RJ40", "RJ41", "RJ42", "RJ43", "RJ44", "RJ45", "RJ46", "RJ47", "RJ48"]
 const first_females_juveniles = ["RJ25", "RJ26", "RJ27", "RJ28", "RJ29", "RJ30", "RJ31", "RJ32", "RJ33", "RJ34", "RJ35", "RJ36"]
 const second_females_juveniles = ["RJ49", "RJ50", "RJ51", "RJ52", "RJ53", "RJ54", "RJ55", "RJ56", "RJ57", "RJ58", "RJ59", "RJ60"]

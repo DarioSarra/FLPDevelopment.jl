@@ -15,6 +15,7 @@ include("pokes_plotting.jl")
 include("Mixture_fit.jl")
 
 export youngs,dario_youngs, females, sixty_days_old, first_females_juveniles, second_females_juveniles, age_exp, cnos_animals, wt_animals, below_thrs, VirusDict
+export first_females_group, second_females_group
 export Likelyhood_Ratio_test, AIC_test, AICc_test
 export median, std, kde, dvAnalysis, DoubleAnalysis
 export fraction_true, bootstrap_mean, frequency

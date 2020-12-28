@@ -6,7 +6,14 @@ function mouse_summary(df,xvar,yvar; summary = mean)
     df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
     return df1
 end
+"""
+    test_normality(df1,xvar,yvar)
 
+Split a the vector yvar according to a binomial xvar vector in a DataFrame df1
+Compute the Jarque-Bera statistic to test the null hypothesis that
+both resulting vectors are normally distributed.
+Return true if both are normally distributed.
+"""
 function test_normality(df1,xvar,yvar)
     cases = union(df1[:,xvar])
     case1 = df1[df1[:,xvar] .== cases[1], yvar]
