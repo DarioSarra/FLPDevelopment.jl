@@ -6,17 +6,31 @@ struct dvAnalysis
     plot
 end
 
-function dvAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, bs = false, nonparametric = false)
+function dvAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :MEAN, bs = false, nonparametric = false)
+    # if eltype(df[:,yvar]) == Bool
+    #     println("Boolean vector, using fraction as summary")
+    #     summary = fraction_true
+    # else
+    #     if bs
+    #         println("using bootstrap_mean as mouse summary")
+    #         summary = bootstrap_mean
+    #     else
+    #         summary = mean
+    #     end
+    # end
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
+        summary_opt = :FRACTION_TRUE
+    end
+    if summary_opt == :MEAN
+        summary = mean
+    elseif summary_opt == :BOOTSTRAP_MEAN
+        println("using bootstrap_mean as mouse summary")
+        summary = bootstrap_mean
+    elseif summary_opt == :FRACTION_TRUE
         summary = fraction_true
-    else
-        if bs
-            println("using bootstrap_mean as mouse summary")
-            summary = bootstrap_mean
-        else
-            summary = mean
-        end
+    elseif summary_opt == :SUM
+        summary = +
     end
     df1 = mouse_summary(df,xvar,yvar; summary = summary)
     normality = test_normality(df1,xvar,yvar)
@@ -42,17 +56,32 @@ struct DoubleAnalysis
     nonparametric_plot
 end
 
-function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, bs = false)
+function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :MEAN, bs = false)
+    # if eltype(df[:,yvar]) == Bool
+    #     println("Boolean vector, using fraction as summary")
+    #     summary = fraction_true
+    # else
+    #     if bs
+    #         println("using bootstrap_mean as mouse summary")
+    #         summary = bootstrap_mean
+    #     else
+    #         summary = mean
+    #     end
+    # end
+    println("NEW APPROACH")
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
+        summary_opt = :FRACTION_TRUE
+    end
+    if summary_opt == :MEAN
+        summary = mean
+    elseif summary_opt == :BOOTSTRAP_MEAN
+        println("using bootstrap_mean as mouse summary")
+        summary = bootstrap_mean
+    elseif summary_opt == :FRACTION_TRUE
         summary = fraction_true
-    else
-        if bs
-            println("using bootstrap_mean as mouse summary")
-            summary = bootstrap_mean
-        else
-            summary = mean
-        end
+    elseif summary_opt == :SUM
+        summary = sum
     end
     df1 = mouse_summary(df,xvar,yvar; summary = summary)
     JarqueBera = test_normality(df1,xvar,yvar)
