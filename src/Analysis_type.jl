@@ -7,17 +7,6 @@ struct dvAnalysis
 end
 
 function dvAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :MEAN, bs = false, nonparametric = false)
-    # if eltype(df[:,yvar]) == Bool
-    #     println("Boolean vector, using fraction as summary")
-    #     summary = fraction_true
-    # else
-    #     if bs
-    #         println("using bootstrap_mean as mouse summary")
-    #         summary = bootstrap_mean
-    #     else
-    #         summary = mean
-    #     end
-    # end
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
         summary_opt = :FRACTION_TRUE
@@ -57,17 +46,6 @@ struct DoubleAnalysis
 end
 
 function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :MEAN, bs = false)
-    # if eltype(df[:,yvar]) == Bool
-    #     println("Boolean vector, using fraction as summary")
-    #     summary = fraction_true
-    # else
-    #     if bs
-    #         println("using bootstrap_mean as mouse summary")
-    #         summary = bootstrap_mean
-    #     else
-    #         summary = mean
-    #     end
-    # end
     println("NEW APPROACH")
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
