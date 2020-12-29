@@ -40,6 +40,7 @@ Aprob = Dict()
 for (a,f) in Afreq
     Aprob[a] = round(f/nrow(Cas_s),digits = 5)
 end
+Cas_s[!,:IncorrectLeave] = [!x for x in Cas_s.CorrectLeave]
 Cas_s[!,:P_AfterLast] = [Aprob[a] for a in Cas_s.AfterLast]
 gd = groupby(Cas_s,:Session)
 transform!(gd, :AfterLast => frequency)

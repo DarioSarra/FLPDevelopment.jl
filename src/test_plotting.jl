@@ -34,11 +34,11 @@ function group_summary(df1,xvar,yvar; normality = true)
         confidence = SignedRankTest
     end
     df2 = combine(groupby(df1,xvar)) do dd
-        m = central(dd[:,yvar])
+        m = round(central(dd[:,yvar]), digits = 2)
         ci = confint(confidence(dd[:,yvar]))
-        ci1 = m - ci[1]
-        ci2 = ci[2] - m
-        (Central = central(dd[:,yvar]), ERR = (ci1,ci2))
+        ci1 = round(m - ci[1], digits = 2)
+        ci2 = round(ci[2] - m, digits = 2)
+        (Central = m, ERR = (ci1,ci2))
     end
     return df2
 end
