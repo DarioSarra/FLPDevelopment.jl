@@ -54,7 +54,13 @@ function test_difference(df1,xvar,yvar;normality = true)
     end
     return test
 end
-
+"""
+    `dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto)`
+df1 is the mouse summary dataframe
+df2 is the group summary dataframe
+xvar is the Symbol of the column to use on the x axes
+yvar is the Symbol of the column to use on the y axes
+"""
 function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto)
     plt = @df df2 scatter(1:nrow(df2),:Central, yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
