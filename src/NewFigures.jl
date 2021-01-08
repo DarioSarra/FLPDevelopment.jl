@@ -36,30 +36,45 @@ to do list
 - CD9 video
 =#
 ## Afterlast df selection
+limit_cas = quantile(collect(skipmissing(Cas_s.AfterLast)),0.95)
+limit_age = quantile(collect(skipmissing(Cas_s.AfterLast)),0.95)
 cas_df = filter(r->
     r.Trial_duration < 30 &&
+    r.AfterLast < 8 &&
     r.Gen == "Rbp4-cre"
     ,Cas_s)
 age_df = filter(r->
     r.Trial_duration < 30 &&
-    r.Sex != "c"
+    r.AfterLast < 8
     ,Age_s)
 ## AfterLast with Juveniles
 age_afterlast = DoubleAnalysis(age_df,:Age,:AfterLast)
 age_afterlast.JarqueBera
 age_afterlast.nonparametric_plot
+confint(age_afterlast.UnequalVarianceT)
 age_afterlast.parametric_plot
+age_afterlast.parametric_summary
+res = age_afterlast.mice_summary
+@df res boxplot(:Age,:AfterLast)
+
 fm1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + (1|MouseID)),age_df))
 fm2 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Age + (1|MouseID)),age_df))
 fm3 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Age + Sex + (1|MouseID)),age_df))
 Likelyhood_Ratio_test(fm1,fm2)
 Likelyhood_Ratio_test(fm2,fm3)
-age_afterlast.parametric_summary
-res = age_afterlast.mice_summary
-res[!,:Sex] = [x in females ? "F" : "M" for x in res.MouseID]
-res[!,:Combo] = res.Sex .* res.Age
-group_summary(res,:Combo, :AfterLast)
 
+fm4 = fit(MixedModel,@formula(AfterLast ~ 1 + (1|MouseID)),age_df,Poisson())
+fm5 = fit(MixedModel,@formula(AfterLast ~ 1 + Age + (1|MouseID)),age_df,Poisson())
+fm6 = fit(MixedModel,@formula(AfterLast ~ 1 + Age + Trial_duration + (1|MouseID)),age_df,Poisson())
+age_df
+Likelyhood_Ratio_test(fm5,fm6)
+scatter(age_df.AfterLast,predict(fm5),markersize=2, legend  = false)
+p = predict(fm6)
+y = age_df.AfterLast
+r = @. sign(y - p) * sqrt(devresid(Poisson(), y, p))
+scatter(r,age_df.AfterLast;markersize=1, stroke = 1, legend = false)
+qqnorm(r; qqline = :R, markersize = 2)
+fitted(fm5)
 # open_html_table(age_afterlast.mice_summary)
 # open_html_table(filter(r-> r.MouseID == "RJ67", age_df))
 #=
@@ -82,6 +97,7 @@ res = age_correct.mice_summary
 res[!,:Sex] = [x in females ? "F" : "M" for x in res.MouseID]
 res[!,:Combo] = res.Sex .* res.Age
 group_summary(res,:Combo, :IncorrectLeave)
+JarqueBeraTest(residuals(fm2))
 # open_html_table(age_correct.mice_summary)
 #=
 Likelihood ratio test on

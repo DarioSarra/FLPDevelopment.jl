@@ -60,6 +60,8 @@ function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt 
         summary = fraction_true
     elseif summary_opt == :SUM
         summary = sum
+    elseif summary_opt == :MEDIAN
+        summary = median
     end
     df1 = mouse_summary(df,xvar,yvar; summary = summary)
     JarqueBera = test_normality(df1,xvar,yvar)
