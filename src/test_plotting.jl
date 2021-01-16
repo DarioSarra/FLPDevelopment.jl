@@ -1,11 +1,51 @@
-function mouse_summary(df,xvar,yvar; summary = mean)
-    gdc = groupby(df,[xvar,:MouseID])
+function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
+    gdc = groupby(df,[xvar,err])
     df1 = combine(yvar => summary => yvar,gdc)
     sort!(df1,xvar)
     firstval = union(df1[:,xvar])[1]
     df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
     return df1
 end
+function summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothing)
+    if group == nothing
+        m_res = individual_summary(df,xvar,yvar; summary = summary, err = err)
+        gd = groupby(m_res,xvar)
+        res = combine(gd,yvar => mean => :Mean, yvar => sem => :Sem)
+        return dropnan!(res)
+    else
+        gd1 = groupby(df,group)
+        res = combine(gd1) do dd
+            m_res = individual_summary(dd,xvar,yvar; summary = summary, err = err)
+            gd2 = groupby(m_res,xvar)
+            combine(gd2,yvar => mean => :Mean, yvar => sem => :Sem)
+        end
+        return dropnan!(res)
+    end
+end
+
+function individual_kde(df,var; err = :MouseID, points = 100, boundary = extrema(df[:,var]))
+    gd1 = groupby(df, err)
+    df1 = combine(gd1) do dd
+        ka = kde(dd[:,var], npoints = points, boundary = bounds)
+        (Xaxis = collect(axis), Vals = [pdf(ka,x) for x in axis])
+    end
+end
+
+function group_kde(df,var; err = :MouseID, group = nothing, points = 100, boundary = extrema(df[:,var]))
+    if isnothing(group)
+        df = individual_kde(df,var; err = err, points = points, boundary = boundary)
+        gd = groupby(df,:Xaxis)
+        return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem)
+    else
+        gd1 = groupby(df, group)
+        res = combine(gd1) do dd
+            m_res = individual_kde(dd,var; err = err, points = points, boundary = boundary)
+            gd2 = groupby(m_res,:Xaxis)
+            combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem)
+        end
+    end
+end
+
 """
     test_normality(df1,xvar,yvar)
 

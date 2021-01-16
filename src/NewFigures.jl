@@ -1,3 +1,5 @@
+# Afterlast over trials
+##
 using Revise, FLPDevelopment, BrowseTables
 gr(size=(600,600), tick_orientation = :out, grid = false,
     linecolor = :black,
@@ -13,7 +15,7 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     r.MouseID != "RJ58" && # blind
     r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
     !(r.MouseID in first_females_group) &&
-    r.Performance > 25 &&
+    # r.Performance > 25 &&
     r.ProtocolSession == 1
     # r.Streak < 75 && #checking
     # previously tried filters
@@ -26,6 +28,50 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     # !(r.MouseID in sixty_days_old) &&
     ,df)
 end
+##### Selection criteria ##
+# AL over trials
+
+Cas_s[!,:BinnedStreak] = bin_axis(Cas_s.Streak; unit_step = 4)
+res3 = summary_xy(Cas_s,:BinnedStreak,:AfterLast; group = :Virus)
+@df res3 plot(string.(:BinnedStreak),:Mean, group = :Virus, linecolor = :auto,
+    ribbon = :Sem, xrotation = 50)
+# trials over time
+Cas_s.Start
+Cas_s[!,:BinnedStart] = bin_axis(Cas_s.Start./60; unit_step = 2)
+res3 = summary_xy(Cas_s,:BinnedStart,:Streak; group = :Virus)
+@df res3 plot(string.(:BinnedStart),:Mean, group = :Virus, linecolor = :auto,
+    ribbon = :Sem, xrotation = 50, legend = :topleft)
+# AL normalisation
+points = 16
+bounds = extrema(Cas_s[:,:AfterLast])
+axis = kde(Cas_s[:,:AfterLast], boundary = bounds,npoints = points).x
+
+gd1 = groupby(Cas_s,:MouseID)
+df1 = combine(gd1) do dd
+    ka = kde(dd.AfterLast, npoints = points, boundary = bounds)
+    (Xaxis = collect(axis), Vals = [pdf(ka,x) for x in axis])
+end
+gd2 = groupby(df1,:Xaxis)
+df2 = combine(gd2, :Vals => mean => :Mean, :Vals => sem => :Sem)
+
+
+@df df2 plot(:Xaxis,:Mean, ribbon = :Sem, xlims = (0,25), linewidth = 1)
+
+
+
+individual_kde(Cas_s,:AfterLast)
+group_kde(Cas_s,:AfterLast)
+Al_density = group_kde(Cas_s,:AfterLast; group = [:Virus])
+@df Al_density plot(:Xaxis,:Mean, ribbon = :Sem, xlims = (0,25), linewidth = 1, group = :Virus)
+
+combine(gd, [:AfterLast] => a -> kde(a,nbins = 16, boundary = (extrema(a)))., kde)
+ka = kde(Cas_s.AfterLast, npoints = 16, boundary = (0,30))
+pdf(ka,16)
+pdf(ka,4.3)
+ka.x
+plot(ka)
+
+#####
 ##
 #=
 to do list

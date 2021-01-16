@@ -44,7 +44,7 @@ age_df = filter(r->
 maximum(age_df.AfterLast)
 age_df
 open_html_table(cas_df)
-mouse_summary(cas_df,:Virus,:AfterLast)
+individual_summary(cas_df,:Virus,:AfterLast)
 ########################### Afterlast Plots ######################################
 cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; nonparametric = true, yspan = (0,6))
 # cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast)

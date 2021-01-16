@@ -21,7 +21,7 @@ function dvAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :M
     elseif summary_opt == :SUM
         summary = +
     end
-    df1 = mouse_summary(df,xvar,yvar; summary = summary)
+    df1 = individual_summary(df,xvar,yvar; summary = summary)
     normality = test_normality(df1,xvar,yvar)
     if nonparametric
         norm = false
@@ -63,7 +63,7 @@ function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt 
     elseif summary_opt == :MEDIAN
         summary = median
     end
-    df1 = mouse_summary(df,xvar,yvar; summary = summary)
+    df1 = individual_summary(df,xvar,yvar; summary = summary)
     JarqueBera = test_normality(df1,xvar,yvar)
     parametric_summary = group_summary(df1,xvar,yvar; normality = true)
     UnequalVarianceT = test_difference(df1,xvar,yvar; normality = true)
