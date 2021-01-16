@@ -23,7 +23,8 @@ function summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothin
     end
 end
 
-function individual_kde(df,var; err = :MouseID, points = 100, boundary = extrema(df[:,var]))
+function individual_kde(df,var; err = :MouseID, points = 100, bounds = extrema(df[:,var]))
+    axis = kde(df[:,var], boundary = bounds, npoints = points).x
     gd1 = groupby(df, err)
     df1 = combine(gd1) do dd
         ka = kde(dd[:,var], npoints = points, boundary = bounds)
@@ -31,15 +32,15 @@ function individual_kde(df,var; err = :MouseID, points = 100, boundary = extrema
     end
 end
 
-function group_kde(df,var; err = :MouseID, group = nothing, points = 100, boundary = extrema(df[:,var]))
+function group_kde(df,var; err = :MouseID, group = nothing, points = 100, bounds = extrema(df[:,var]))
     if isnothing(group)
-        df = individual_kde(df,var; err = err, points = points, boundary = boundary)
+        df = individual_kde(df,var; err = err, points = points, bounds = bounds)
         gd = groupby(df,:Xaxis)
         return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem)
     else
         gd1 = groupby(df, group)
         res = combine(gd1) do dd
-            m_res = individual_kde(dd,var; err = err, points = points, boundary = boundary)
+            m_res = individual_kde(dd,var; err = err, points = points, bounds = bounds)
             gd2 = groupby(m_res,:Xaxis)
             combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem)
         end

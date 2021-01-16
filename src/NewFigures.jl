@@ -42,35 +42,8 @@ res3 = summary_xy(Cas_s,:BinnedStart,:Streak; group = :Virus)
 @df res3 plot(string.(:BinnedStart),:Mean, group = :Virus, linecolor = :auto,
     ribbon = :Sem, xrotation = 50, legend = :topleft)
 # AL normalisation
-points = 16
-bounds = extrema(Cas_s[:,:AfterLast])
-axis = kde(Cas_s[:,:AfterLast], boundary = bounds,npoints = points).x
-
-gd1 = groupby(Cas_s,:MouseID)
-df1 = combine(gd1) do dd
-    ka = kde(dd.AfterLast, npoints = points, boundary = bounds)
-    (Xaxis = collect(axis), Vals = [pdf(ka,x) for x in axis])
-end
-gd2 = groupby(df1,:Xaxis)
-df2 = combine(gd2, :Vals => mean => :Mean, :Vals => sem => :Sem)
-
-
-@df df2 plot(:Xaxis,:Mean, ribbon = :Sem, xlims = (0,25), linewidth = 1)
-
-
-
-individual_kde(Cas_s,:AfterLast)
-group_kde(Cas_s,:AfterLast)
-Al_density = group_kde(Cas_s,:AfterLast; group = [:Virus])
-@df Al_density plot(:Xaxis,:Mean, ribbon = :Sem, xlims = (0,25), linewidth = 1, group = :Virus)
-
-combine(gd, [:AfterLast] => a -> kde(a,nbins = 16, boundary = (extrema(a)))., kde)
-ka = kde(Cas_s.AfterLast, npoints = 16, boundary = (0,30))
-pdf(ka,16)
-pdf(ka,4.3)
-ka.x
-plot(ka)
-
+df1 = group_kde(Cas_s,:AfterLast; group = [:Virus], points = 50)
+@df df1 plot(:Xaxis,:Mean, ribbon = :Sem, xlims = (0,25), linewidth = 1, group = :Virus)
 #####
 ##
 #=
