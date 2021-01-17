@@ -86,7 +86,7 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3",
 ## Afterlast df selection
 limit_cas = quantile(collect(skipmissing(Cas_s.AfterLast)),0.95)
 cas_df = filter(r->
-    r.Trial_duration < 30 &&
+    # r.Trial_duration < 30 &&
     r.AfterLast < limit_cas &&
     r.Gen == "Rbp4-cre"
     ,Cas_s)

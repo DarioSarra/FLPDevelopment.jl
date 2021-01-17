@@ -90,16 +90,16 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1",
 limit_age = quantile(collect(skipmissing(Age_s.AfterLast)),0.95)
 age_df = filter(r->
     r.Trial_duration < 30 &&
-    r.AfterLast < limit_age
+    r.AfterLast < 20
     ,Age_s)
 ## AfterLast with Juveniles
 age_afterlast = DoubleAnalysis(age_df,:Age,:AfterLast)
 age_afterlast.JarqueBera
 age_afterlast.mice_summary
 age_afterlast.nonparametric_plot
-age_afterlast.nonparametric_summary
 ylabel!("Pokes after last reward")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","ALjuvenile.png"))
+age_afterlast.nonparametric_summary
 # age_afterlast.parametric_plot
 # age_afterlast.parametric_summary
 
