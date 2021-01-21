@@ -31,10 +31,9 @@ levels!(Cas_s.Virus,["tdTomato", "Caspase"])
 Cas_s[!,:Gen] = [g == "HET" ? "Rbp4-cre" : "Wild Type" for g in Cas_s.Gen]
 Cas_s[!,:Combo] = Cas_s.Gen .* "\n" .* Cas_s.Virus
 Cas_s[!,:Group] = [r.Gen == "Wild Type" ? "Wild Type" : r.Gen .* "\n" .* r.Virus for r in eachrow(Cas_s)]
-# categorical!(Cas_s,[:Gen,:Virus,:Group])
-# levels!(Cas_s.Gen,["Wild Type","Rbp4-cre",])
-# levels!(Cas_s.Virus,["tdTomato", "Caspase"])
-# levels!(Cas_s.Group,["Rbp4-cre\ntdTomato", "Rbp4-cre\nCaspase", "Wild Type",])
+Cas_p[!,:Gen] = [g == "HET" ? "Rbp4-cre" : "Wild Type" for g in Cas_p.Gen]
+Cas_p[!,:Combo] = Cas_p.Gen .* "\n" .* Cas_p.Virus
+Cas_p[!,:Group] = [r.Gen == "Wild Type" ? "Wild Type" : r.Gen .* "\n" .* r.Virus for r in eachrow(Cas_p)]
 Afreq = countmap(Cas_s.AfterLast)
 Aprob = Dict()
 for (a,f) in Afreq
@@ -44,8 +43,8 @@ Cas_s[!,:IncorrectLeave] = [!x for x in Cas_s.CorrectLeave]
 Cas_s[!,:P_AfterLast] = [Aprob[a] for a in Cas_s.AfterLast]
 gd = groupby(Cas_s,:Session)
 transform!(gd, :AfterLast => frequency)
-
-
+transform!(gd, :Num_Rewards => cumsum => :Cum_Rewards)
+Cas_s[!,:RewRate] = Cas_s.Cum_Rewards ./ Cas_s.Stop
 # for (df,name) in zip([Cas_p, Cas_b, Cas_s],["Pokes", "Bouts", "Streaks"])
 #     filename = joinpath(path, "Results_" * string(today()),"FullInfo" * name * ".csv")
 #     CSV.write(filename,df)

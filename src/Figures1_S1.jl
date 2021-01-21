@@ -56,7 +56,7 @@ limit = quantile(collect(skipmissing(Age_p.PreInterpoke)),0.95)
 df1 = group_kde(Age_p,:PreInterpoke; group = :Age, points = 1000)
 age_IPDist = @df df1 plot(:Xaxis,:Mean, ribbon = :Sem, linecolor = :auto, xlims = (0,60),
     xlabel = "Inter-poke interval (s)", ylabel = "PDF", group = :Age)
-vline!([limit], line = :dash, label = "95th quantile")
+vline!([limit], line = :dash, label = "95th percentile")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","InterpokePDF.png"))
 
 # Travel distribution
@@ -90,7 +90,7 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1",
 limit_age = quantile(collect(skipmissing(Age_s.AfterLast)),0.95)
 age_df = filter(r->
     r.Trial_duration < 30 &&
-    r.AfterLast < 20
+    r.AfterLast < limit_age
     ,Age_s)
 ## AfterLast with Juveniles
 age_afterlast = DoubleAnalysis(age_df,:Age,:AfterLast)

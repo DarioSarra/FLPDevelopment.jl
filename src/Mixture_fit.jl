@@ -55,7 +55,7 @@ function mixture_exp_weighted(x)
     MixtureModel(Exponential[Exponential(res[1]), Exponential(res[2])],[res[3],1-res[3]])
 end
 ##
-function cust_expo(x,params)
+function GammaExp_mix(x,params)
     if any(params .< 0)
         return 100000000
     else
@@ -64,8 +64,8 @@ function cust_expo(x,params)
     end
 end
 
-function mixture_exp(x)
-    opt = optimize(vars -> cust_expo(x,vars), ones(3))
+function mixture_gamma_exp(x)
+    opt = optimize(vars -> GammaExp_mix(x,vars), ones(3))
     res = opt.minimizer
     MixtureModel(Gamma[Exponential(res[1]), Gamma(res[2],res[3])])
     # MixtureModel(Exponential[Exponential(res[1]), Exponential(res[2])])

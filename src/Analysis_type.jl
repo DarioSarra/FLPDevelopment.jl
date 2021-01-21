@@ -46,7 +46,6 @@ struct DoubleAnalysis
 end
 
 function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :MEAN, bs = false)
-    println("NEW APPROACH")
     if eltype(df[:,yvar]) == Bool
         println("Boolean vector, using fraction as summary")
         summary_opt = :FRACTION_TRUE
@@ -62,7 +61,10 @@ function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt 
         summary = sum
     elseif summary_opt == :MEDIAN
         summary = median
+    elseif summary_opt == :MODE
+        summary = mode
     end
+    # isnothing(ind_operation) && ind_operation = summary
     df1 = individual_summary(df,xvar,yvar; summary = summary)
     JarqueBera = test_normality(df1,xvar,yvar)
     parametric_summary = group_summary(df1,xvar,yvar; normality = true)
@@ -71,7 +73,6 @@ function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt 
     nonparametric_summary = group_summary(df1,xvar,yvar; normality = false)
     MannWhitneyU = test_difference(df1,xvar,yvar; normality = false)
     nonparametric_plot = dvplot(df1,nonparametric_summary,xvar,yvar,MannWhitneyU; yspan = yspan, ystep = ystep)
-
     DoubleAnalysis(df1, JarqueBera,
         parametric_summary, UnequalVarianceT, parametric_plot,
         nonparametric_summary, MannWhitneyU, nonparametric_plot)

@@ -24,10 +24,11 @@ function summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothin
 end
 
 function individual_kde(df,var; err = :MouseID, points = 100, bounds = extrema(df[:,var]))
-    axis = kde(df[:,var], boundary = bounds, npoints = points).x
+    # axis = kde(df[:,var], boundary = bounds, npoints = points).x
+    axis = range(bounds...,length = points)
     gd1 = groupby(df, err)
     df1 = combine(gd1) do dd
-        ka = kde(dd[:,var], npoints = points, boundary = bounds)
+        ka = kde(dd[:,var], npoints = points#=, boundary = bounds=#)
         (Xaxis = collect(axis), Vals = [pdf(ka,x) for x in axis])
     end
 end
@@ -46,6 +47,60 @@ function group_kde(df,var; err = :MouseID, group = nothing, points = 100, bounds
         end
     end
 end
+
+function individual_cdf(df,var; err = :MouseID, group = nothing, points = 100, bounds = extrema(df[:,var]))
+    axis = ecdf(df[:,var]).sorted_values
+    gd1 = groupby(df, err)
+    df1 = combine(gd1) do dd
+        CUM = ecdf(dd[:,var])
+        (Xaxis = collect(axis), Vals = CUM(axis))
+    end
+end
+
+function group_cdf(df,var; err = :MouseID, group = nothing, points = 100, bounds = extrema(df[:,var]))
+    if isnothing(group)
+        df = individual_cdf(df,var; err = err, points = points, bounds = bounds)
+        gd = groupby(df,:Xaxis)
+        return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem)
+    else
+        gd1 = groupby(df, group)
+        res = combine(gd1) do dd
+            m_res = individual_cdf(dd,var; err = err, points = points, bounds = bounds)
+            gd2 = groupby(m_res,:Xaxis)
+            combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem)
+        end
+    end
+end
+
+function individual_frequency(df,xvar; err = :MouseID)
+    axis = minimum(df[:,xvar]):maximum(df[:,xvar])
+    gd1 = groupby(df, err)
+    df1 = combine(gd1) do dd
+        df2 = DataFrame(Xaxis = Int[], Vals = Float64[])
+        for (k,i) in countmap(dd[:,xvar])
+            push!(df2, [k,i/nrow(dd)])
+        end
+        df2
+    end
+    return sort(df1, :Xaxis)
+end
+
+function group_frequency(df,var; err = :MouseID, group = nothing)
+    if isnothing(group)
+        df = individual_frequency(df,var; err = err)
+        gd = groupby(df,:Xaxis)
+        return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem)
+    else
+        gd1 = groupby(df, group)
+        res = combine(gd1) do dd
+            m_res = individual_frequency(dd,var; err = err)
+            gd2 = groupby(m_res,:Xaxis)
+            combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem)
+        end
+    end
+end
+
+group_distribution(df, var; args...) = length(unique(df[:,var])) > 40 ? group_kde(df, var; args ...) : group_frequency(df, var; args ...)
 
 """
     test_normality(df1,xvar,yvar)
@@ -99,7 +154,7 @@ function test_difference(df1,xvar,yvar;normality = true)
 end
 """
     `dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto)`
-df1 is the mouse summary dataframe
+df1 is the individual summary dataframe
 df2 is the group summary dataframe
 xvar is the Symbol of the column to use on the x axes
 yvar is the Symbol of the column to use on the y axes
@@ -155,4 +210,54 @@ function check_cd9(df,xvar, yvar)
         label = false, markersize = 2)
     end
     p
+end
+## check distributions
+function check_distribution(df, var, grouping = nothing)
+    if isnothing(grouping)
+        if in(:Age,propertynames(df))
+            grouping = :Age
+        elseif in(:Virus,propertynames(df))
+            grouping = :Virus
+        else
+            error("Enable to find grouping variable")
+         end
+    end
+    ungrouped_df = group_distribution(df,var)
+    grouped_df = group_distribution(df,var, group = grouping)
+    filter!(r -> !isnan(r.Sem), ungrouped_df)
+    filter!(r -> !isnan(r.Sem), grouped_df)
+    ungrouped_plot = @df ungrouped_df plot(:Xaxis,:Mean, xlabel = string(var), ribbon = :Sem, linecolor = :auto, legend = false)
+    q95 = quantile(df[:,var],0.95)
+    vline!([q95], line = :dash)
+    annotate!(q95, maximum(ungrouped_plot[1][1][:y])/2,Plots.text(" 95th percentile: "*string(Int64(round(q95, digits = 0))),10,:left))
+    grouped_plot = @df grouped_df plot(:Xaxis,:Mean, group = cols(grouping), xlabel = string(var), ribbon = :Sem, linecolor = :auto)
+    ungrouped_plot, grouped_plot, DoubleAnalysis(df,grouping,var).nonparametric_plot
+end
+
+function check_distributions(df_s,df_p, grouping = nothing)
+    if isnothing(grouping)
+        if in(:Age,propertynames(df_s))
+            grouping = :Age
+        elseif in(:Virus,propertynames(df_s))
+            grouping = :Virus
+         end
+    end
+    #AfterLast
+    AF, gAF, tAF = check_distribution(df_s,:AfterLast)
+    #Error
+    Err, gErr, tErr = check_distribution(df_s,:IncorrectLeave)
+    #Travel
+    TV, gTV, tTV = check_distribution(df_s,:Travel_to)
+    #Interpoke
+    IP, gIP, tIP = check_distribution(df_p,:PreInterpoke)
+    #Duration
+    DT, gDT, tDT = check_distribution(df_s,:Trial_duration)
+
+    plot(AF, gAF, tAF,
+        TV, gTV, tTV,
+        IP, gIP, tIP,
+        DT, gDT, tDT,
+        layout = grid(4,3),
+        size=(900,1200),
+        thickness_scaling = 1)
 end
