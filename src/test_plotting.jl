@@ -229,7 +229,9 @@ function check_distribution(df, var, grouping = nothing)
     ungrouped_plot = @df ungrouped_df plot(:Xaxis,:Mean, xlabel = string(var), ribbon = :Sem, linecolor = :auto, legend = false)
     q95 = quantile(df[:,var],0.95)
     vline!([q95], line = :dash)
-    annotate!(q95, maximum(ungrouped_plot[1][1][:y])/2,Plots.text(" 95th percentile: "*string(Int64(round(q95, digits = 0))),10,:left))
+    allignment = q95 > median(ungrouped_plot[1][1][:x]) ? :right : :left
+    value = q95 > 1 ? string(Int64(round(q95, digits = 0))) : string(round(q95, digits = 2))
+    annotate!(q95, maximum(ungrouped_plot[1][1][:y])/2,Plots.text(" 95th percentile: "* value * " \n ndata: " * string(nrow(df)) * " ",10,allignment))
     grouped_plot = @df grouped_df plot(:Xaxis,:Mean, group = cols(grouping), xlabel = string(var), ribbon = :Sem, linecolor = :auto)
     ungrouped_plot, grouped_plot, DoubleAnalysis(df,grouping,var).nonparametric_plot
 end
@@ -254,10 +256,19 @@ function check_distributions(df_s,df_p, grouping = nothing)
     DT, gDT, tDT = check_distribution(df_s,:Trial_duration)
 
     plot(AF, gAF, tAF,
-        TV, gTV, tTV,
+        Err, gErr, tErr,
         IP, gIP, tIP,
         DT, gDT, tDT,
-        layout = grid(4,3),
-        size=(900,1200),
+        TV, gTV, tTV,
+        layout = grid(5,3),
+        size=(1200,1200),
         thickness_scaling = 1)
+end
+
+function maintitle!(plt,what::String)
+    y = ones(3)
+    title = Plots.scatter(y, marker=0, markeralpha=0, grid = false,
+    axis=false, leg=false,ticks = nothing, size = (200,1200),
+    annotations=(2, y[2], Plots.text(what)))
+    plot(title, plt, layout = grid(2,1, heights = [0.05,0.95]))
 end

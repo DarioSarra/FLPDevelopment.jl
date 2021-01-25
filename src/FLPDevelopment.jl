@@ -19,8 +19,8 @@ export first_females_group, second_females_group
 export Likelyhood_Ratio_test, AIC_test, AICc_test
 export median, std, kde, dvAnalysis, DoubleAnalysis
 export fraction_true, bootstrap_mean, frequency, dropnan, dropnan!, bin_axis
-export individual_summary, summary_xy, group_kde, group_cdf, group_frequency, group_summary, dvplot, check_cd9, check_distribution, check_distributions
-export poke_plot!
+export individual_summary, summary_xy, group_kde, group_cdf, group_frequency, group_summary, dvplot, check_distribution, check_distributions
+export poke_plot!, maintitle!
 export mixture_gamma, mixture_gamma_weighted, mixture_exp, mixture_exp_weighted, mixture_gamma_exp
 
 end # module

@@ -85,3 +85,63 @@ function bin_axis(v; length = 50, unit_step = nothing)
         return [isnothing(findfirst(r .>= x )) ? last(r) + step(r) : r[findfirst(r .>= x )] for x in v]
     end
 end
+
+"""
+    process_filtered_streak(df::AbstractDataFrame, var::Symbol, val <:Number)
+
+filter a pokes dataframe to chop trials according to the first encountered value val in column var
+return a streak dataframe from the chopped pokes dataframe
+"""
+function process_filtered_streak(df::AbstractDataFrame, var::Symbol, val ::Number)
+    gd = groupby(df,[:Streak,:MouseID])
+    filt_df_p = combine(gd) do dd
+        check = findfirst(dd[:, var] .>= val)
+        if isnothing(check)
+            limit = nrow(dd)
+        elseif check == 1
+            limit = 1
+        elseif check > 1
+            limit = check - 1
+        end
+        dd[1:limit,:]
+    end
+    gd = groupby(filt_df_p,:MouseID)
+    filt_df_s = combine(gd) do dd
+        prov = DataFrame(FLPprocess.process_streaks(dd))
+        prov[!,:Gen] .= dd[1,:Gen]
+        return prov
+    end
+    if in(:Age,propertynames(df))
+        filt_df_s[!,:Age] = [x in dario_youngs ? "Juveniles" : "Adults" for x in filt_df_s.MouseID]
+    elseif in(:Virus,propertynames(df))
+        filt_df_s[!,:Virus] = [get(VirusDict,x,"Missing") for x in filt_df_s.MouseID]
+    end
+    filt_df_s[!,:Sex] = [x in females ? "F" : "M" for x in filt_df_s.MouseID]
+    filt_df_s[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in filt_df_s.PreInterpoke]
+    gd = groupby(filt_df_s,:MouseID)
+    transform!(gd, :Streak => maximum => :Performance)
+    Afreq = countmap(filt_df_s.AfterLast)
+    Aprob = Dict()
+    for (a,f) in Afreq
+        Aprob[a] = round(f/nrow(filt_df_s),digits = 5)
+    end
+    filt_df_s[!,:IncorrectStart] = [!x for x in filt_df_s.CorrectStart]
+    filt_df_s[!,:IncorrectLeave] = [!x for x in filt_df_s.CorrectLeave]
+    filt_df_s[!,:P_AfterLast] = [Aprob[a] for a in filt_df_s.AfterLast]
+    gd = groupby(filt_df_s,:MouseID)
+    transform!(gd, :AfterLast => frequency)
+    transform!(gd, :Num_Rewards => cumsum => :Cum_Rewards)
+    filt_df_s[!,:RewRate] = filt_df_s.Cum_Rewards ./ filt_df_s.Stop
+    return filt_df_s, filt_df_p
+
+end
+
+function joinfilter(df_s,df_p,var, value)
+    # filter streak according to the value
+    f_df_s = filter(var => x -> x <= value, df_s)
+    # use column MouseID and Streak to select from the PokesDatafraim
+    f_df_p = leftjoin(f_df_s[:,[:MouseID, :Streak]],df_p,on = [:MouseID, :Streak])
+    dropmissing!(f_df_p,:PreInterpoke, disallowmissing = true)
+    filter!(r -> 0 < r.PreInterpoke, f_df_p)
+    return f_df_s, f_df_p
+end

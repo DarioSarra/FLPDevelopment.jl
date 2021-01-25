@@ -11,7 +11,7 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
     r.MouseID != "CD09" && # biting, see B1_CD09_2020-07-13 minute30
     r.MouseID != "RJ58" && # blind
-    # r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
+    r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
     !(r.MouseID in first_females_group) &&
     r.ProtocolSession == 1
     # r.Performance > 25 && no need because minimum is 31
@@ -26,44 +26,60 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     # !(r.MouseID in sixty_days_old) &&
     ,df)
 end
+for df in (Cas_p, Cas_b, Cas_s)
+    filter!(r -> r.Gen == "Rbp4-cre", df)
+end
 ## Densities
 ## No filters
-check_distributions(Age_s,Age_p)
+filt_Age_p = filter(r -> 0 < r.PreInterpoke, Age_p)
+check_distributions(Age_s,filt_Age_p)
 title!("Age No filters")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Age_No_filters.pdf"))
-check_distributions(Cas_s, Cas_p)
+filt_Cas_p = filter(r -> 0 < r.PreInterpoke, Cas_p)
+check_distributions(Cas_s, filt_Cas_p)
 title!("Virus No filters")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_No_filters.pdf"))
-## 30s Duration 1s Intepoke
-f_Age_s = filter(r -> r.Trial_duration < 30, Age_s)
-f_Age_p = filter(r -> 0 < r.PreInterpoke < 1, Age_p)
-check_distributions(f_Age_s,f_age_p)
-title!("Age 30s Duration 1s Intepoke")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Age_30sDuration1sIntepokes.pdf"))
-f_Cas_s = filter(r -> r.Trial_duration < 30 && r.Gen == "Rbp4-cre", Cas_s)
-f_Cas_p = filter(r -> 0 < r.PreInterpoke < 1 && r.Gen == "Rbp4-cre", Cas_p)
+## 30s Duration
+f_Age_s,f_Age_p = FLPDevelopment.joinfilter(Age_s,Age_p,:Trial_duration, 30)
+filt_Age_p = filter(r -> 0 < r.PreInterpoke, filt_Age_p)
+check_distributions(f_Age_s,f_Age_p)
+title!("Age 30s Duration")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Age_30sDuration.pdf"))
+f_Cas_s,f_Cas_p = FLPDevelopment.joinfilter(Cas_s,Cas_p,:Trial_duration, 30)
+filt_Cas_p = filter(r -> 0 < r.PreInterpoke, f_Cas_p)
 check_distributions(f_Cas_s,f_Cas_p)
-title!("Virus 30s Duration 1s Intepoke")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_30sDuration1sIntepokes.pdf"))
-## q95AfterLast 1s Intepoke
-f_Age_s = filter(r -> r.AfterLast < 7, Age_s)
-f_Age_p = filter(r -> 0 < r.PreInterpoke < 1, Age_p)
-check_distributions(f_Age_s,f_age_p)
+title!("Virus 30s Duration")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_30sDuration.pdf"))
+## q95AfterLast
+f_Age_s,f_Age_p = FLPDevelopment.joinfilter(Age_s,Age_p,:AfterLast, 7)
+filt_Age_p = filter(r -> 0 < r.PreInterpoke, filt_Age_p)
+check_distributions(f_Age_s,f_Age_p)
 title!("Age q95 Afterlast 1s Intepoke")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Age_q95AfterLast1sIntepokes.pdf"))
-f_Cas_s = filter(r -> r.AfterLast < 8 && r.Gen == "Rbp4-cre", Cas_s)
-f_Cas_p = filter(r -> 0 < r.PreInterpoke < 1 && r.Gen == "Rbp4-cre", Cas_p)
+f_Cas_s,f_Cas_p = FLPDevelopment.joinfilter(Cas_s,Cas_p,:AfterLast, 7)
+filt_Cas_p = filter(r -> 0 < r.PreInterpoke, f_Cas_p)
 check_distributions(f_Cas_s,f_Cas_p)
 title!("Virus q95 Afterlast 1s Intepoke")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_q95AfterLast1sIntepokes.pdf"))
-## 30s Duration q95AfterLast 1s Intepoke
-f_Age_s = filter(r -> r.AfterLast < 7 && r.Trial_duration < 30, Age_s)
-f_Age_p = filter(r -> 0 < r.PreInterpoke < 1, Age_p)
-check_distributions(f_Age_s,f_age_p)
+## 30s Duration q95AfterLast
+f_Age_s,f_Age_p = FLPDevelopment.joinfilter(Age_s,Age_p,:Trial_duration, 30)
+f_Age_s,f_Age_p = FLPDevelopment.joinfilter(f_Age_s,f_Age_p,:AfterLast, 7)
+check_distributions(f_Age_s,f_Age_p)
 title!("Age 30s Duration q95 Afterlast")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Age_q95AfterLast30sDuration.pdf"))
-f_Cas_s = filter(r -> r.AfterLast < 8 && r.Trial_duration < 30 && r.Gen == "Rbp4-cre", Cas_s)
-f_Cas_p = filter(r -> 0 < r.PreInterpoke < 1 && r.Gen == "Rbp4-cre", Cas_p)
+f_Cas_s,f_Cas_p = FLPDevelopment.joinfilter(Cas_s,Cas_p,:Trial_duration, 30)
+f_Cas_s,f_Cas_p = FLPDevelopment.joinfilter(Cas_s,Cas_p,:AfterLast, 7)
 check_distributions(f_Cas_s,f_Cas_p)
-title!("Virus q95 Afterlast 1s Intepoke")
+title!("Virus 30s Duration q95 Afterlast")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_q95AfterLast30sDuration.pdf"))
+## PreInterpoke
+filt_Age_s, filt_Age_p = FLPDevelopment.process_filtered_streak(Age_p,:PreInterpoke,1)
+filt_Age_p = filter(r -> 0 < r.PreInterpoke, filt_Age_p)
+check_distributions(filt_Age_s,filt_Age_p)
+title!("Age Interpoke < 1")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Age_Interpoke<1.pdf"))
+filt_Cas_s, filt_Cas_p =FLPDevelopment.process_filtered_streak(Cas_p,:PreInterpoke,1)
+filter!(r -> 0 < r.PreInterpoke, filt_Cas_p)
+check_distributions(filt_Cas_s,filt_Cas_p)
+title!("Virus Interpoke < 1")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_Interpoke<1.pdf"))
