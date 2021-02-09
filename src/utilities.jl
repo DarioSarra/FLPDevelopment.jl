@@ -1,6 +1,9 @@
 function fraction_true(v::AbstractArray{Bool})
     sum(v)/length(v)
 end
+function incorrect_fraction(v::AbstractArray{Bool})
+    sum(v)/(length(v)-sum(v))
+end
 
 function bootstrap_mean(v; sampling = BalancedSampling, nsample = 1000)
     bs = bootstrap(mean, v, sampling(nsample))
@@ -144,4 +147,37 @@ function joinfilter(df_s,df_p,var, value)
     dropmissing!(f_df_p,:PreInterpoke, disallowmissing = true)
     filter!(r -> 0 < r.PreInterpoke, f_df_p)
     return f_df_s, f_df_p
+end
+
+"""
+    `summary_df(streak_df, pokes_df)`
+summarise per mouse info
+"""
+function summarydf(streak_df, pokes_df)
+    grp = :Age in propertynames(streak_df) ? :Age : :Virus
+    gds = groupby(streak_df,:MouseID)
+    Summary_df = combine(gds,grp => first => grp,
+        :Sex => first => :Sex,
+        :Num_pokes => sum => :Pokes,
+        :Streak => maximum => :Trials,
+        :AfterLast => mean => :AvgAfterLast,
+        :Num_Rewards => sum => :Rewards,
+        :IncorrectLeave => sum => :ErrorTrials,
+        :Travel_to => mean => :AvgTravel)
+    Summary_df[!,:AvgAfterLast] = round.(Summary_df.AvgAfterLast, digits = 2)
+    Summary_df[!,:AvgTravel] = round.(Summary_df.AvgTravel, digits = 2)
+    Summary_df[!,:Perr] = Summary_df.ErrorTrials ./ Summary_df.Trials
+    Summary_df[!,:Perr] = round.(Summary_df.Perr, digits = 2)
+    Summary_df[!,:RewxPoke] = round.(Summary_df.Rewards ./ Summary_df.Pokes , digits = 2)
+    Summary_df[!,:RewxTrial] = round.(Summary_df.Rewards ./ Summary_df.Trials , digits = 2)
+    pokes_df = filter(r-> r.PreInterpoke > 0, pokes_df)
+    gdp = groupby(pokes_df,:MouseID)
+    Summary_df = leftjoin(Summary_df,combine(gdp, :PreInterpoke => mean => :AvgInterpoke), on = :MouseID)
+    Summary_df[!,:AvgInterpoke] = round.(Summary_df.AvgInterpoke, digits = 2)
+    sort!(Summary_df,grp)
+    Summary_df = Summary_df[:,[:MouseID, grp, :Sex, :AvgAfterLast,
+    :Pokes, :Trials, :ErrorTrials, :Rewards,
+    :AvgInterpoke, :AvgTravel,
+    :Perr,:RewxPoke,:RewxTrial]]
+    return Summary_df
 end

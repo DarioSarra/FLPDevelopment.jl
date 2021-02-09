@@ -1,11 +1,6 @@
-function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
-    gdc = groupby(df,[xvar,err])
-    df1 = combine(yvar => summary => yvar,gdc)
-    sort!(df1,xvar)
-    firstval = union(df1[:,xvar])[1]
-    df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
-    return df1
-end
+"""
+    `summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothing)`
+"""
 function summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothing)
     if group == nothing
         m_res = individual_summary(df,xvar,yvar; summary = summary, err = err)
@@ -123,6 +118,15 @@ function test_normality(df1,xvar,yvar)
     all([n1,n2])
 end
 
+function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
+    gdc = groupby(df,[xvar,err])
+    df1 = combine(yvar => summary => yvar,gdc)
+    sort!(df1,xvar)
+    firstval = union(df1[:,xvar])[1]
+    df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
+    return df1
+end
+
 function group_summary(df1,xvar,yvar; normality = true)
     if normality
         central = mean
@@ -132,11 +136,15 @@ function group_summary(df1,xvar,yvar; normality = true)
         confidence = SignedRankTest
     end
     df2 = combine(groupby(df1,xvar)) do dd
-        m = round(central(dd[:,yvar]), digits = 2)
-        ci = confint(confidence(dd[:,yvar]))
-        ci1 = round(m - ci[1], digits = 2)
-        ci2 = round(ci[2] - m, digits = 2)
-        (Central = m, ERR = (ci1,ci2))
+        # m = round(central(dd[:,yvar]), digits = 2)
+        # ci = confint(confidence(dd[:,yvar]))
+        # ci1 = round(m - ci[1], digits = 2)
+        # ci2 = round(ci[2] - m, digits = 2)
+        b = bootstrap(central,dd[:,yvar], BasicSampling(100000))
+        m, lower, upper = confint(b,BasicConfInt(0.95))[1]
+        ci1 = m - lower#, digits = 2
+        ci2 = upper - m#, digits = 2
+        (Central = m, ERR = (ci2,ci1))
     end
     return df2
 end
@@ -159,23 +167,31 @@ df2 is the group summary dataframe
 xvar is the Symbol of the column to use on the x axes
 yvar is the Symbol of the column to use on the y axes
 """
-function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto)
-    plt = @df df2 scatter(1:nrow(df2),:Central, yerror = :ERR,
+function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto, showmice = false)
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),cols(xvar)),
         legend = false)
-    @df df1 scatter!(:xpos,cols(yvar),
+    if showmice
+        @df df1 scatter!(:xpos,cols(yvar),
         markersize = 3,
         alpha = 0.5,
         color = :grey,
         ylims = yspan,
         yticks = ystep)
+    end
     if pvalue(test) < 0.05
         p = pvalue(test)
         message = p < 0.01 ? "p < 0.01" : "p < 0.05"
         if yspan == :auto
-            m1 = maximum(df1[:,yvar])
-            m2 = minimum(df1[:,yvar])
+            if showmice #use mice maximum and minimum values to set the plot span
+                m1 = maximum(df1[:,yvar])
+                m2 = minimum(df1[:,yvar])
+            else #use yerror minimu and maximum values to set the plot span
+                m1 = maximum(df2.Central .+ last.(df2.ERR))
+                m2 = maximum(df2.Central .- first.(df2.ERR))
+            end
             span = (m1-m2)/20
             ref = m1 + span
         else
@@ -212,7 +228,7 @@ function check_cd9(df,xvar, yvar)
     p
 end
 ## check distributions
-function check_distribution(df, var, grouping = nothing)
+function check_distribution(df, var; grouping = nothing, summary_opt = :MEAN)
     if isnothing(grouping)
         if in(:Age,propertynames(df))
             grouping = :Age
@@ -222,21 +238,26 @@ function check_distribution(df, var, grouping = nothing)
             error("Enable to find grouping variable")
          end
     end
-    ungrouped_df = group_distribution(df,var)
+    # Density
     grouped_df = group_distribution(df,var, group = grouping)
-    filter!(r -> !isnan(r.Sem), ungrouped_df)
     filter!(r -> !isnan(r.Sem), grouped_df)
-    ungrouped_plot = @df ungrouped_df plot(:Xaxis,:Mean, xlabel = string(var), ribbon = :Sem, linecolor = :auto, legend = false)
+    density_plot = @df grouped_df plot(:Xaxis,:Mean, group = cols(grouping), xlabel = string(var), ribbon = :Sem, linecolor = :auto)
     q95 = quantile(df[:,var],0.95)
     vline!([q95], line = :dash)
-    allignment = q95 > median(ungrouped_plot[1][1][:x]) ? :right : :left
+    allignment = q95 > median(density_plot[1][1][:x]) ? :right : :left
     value = q95 > 1 ? string(Int64(round(q95, digits = 0))) : string(round(q95, digits = 2))
-    annotate!(q95, maximum(ungrouped_plot[1][1][:y])/2,Plots.text(" 95th percentile: "* value * " \n ndata: " * string(nrow(df)) * " ",10,allignment))
-    grouped_plot = @df grouped_df plot(:Xaxis,:Mean, group = cols(grouping), xlabel = string(var), ribbon = :Sem, linecolor = :auto)
-    ungrouped_plot, grouped_plot, DoubleAnalysis(df,grouping,var).nonparametric_plot
+    annotate!(q95, maximum(density_plot[1][1][:y])/2,Plots.text(" 95th percentile: "* value * " \n ndata: " * string(nrow(df)) * " ",10,allignment))
+    # Value over trials
+    df[!,:BinnedStreak] = bin_axis(df.Streak; unit_step = 5)
+    dfSum = summary_xy(df,:BinnedStreak,var; summary = mean, err = :MouseID, group = grouping)
+    overtrialplot = @df dfSum plot(:BinnedStreak,:Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto,
+    legend = :topleft, ylabel = String(var), xlabel = "Trial")
+    # test and violin plot
+    an_res = DoubleAnalysis(df,grouping,var, summary_opt = summary_opt)
+    density_plot, overtrialplot, an_res.nonparametric_plot, an_res.vplot
 end
 
-function check_distributions(df_s,df_p, grouping = nothing)
+function check_distributions(df_s,df_p; grouping = nothing, summary_opt = :MEAN)
     if isnothing(grouping)
         if in(:Age,propertynames(df_s))
             grouping = :Age
@@ -244,25 +265,39 @@ function check_distributions(df_s,df_p, grouping = nothing)
             grouping = :Virus
          end
     end
-    #AfterLast
-    AF, gAF, tAF = check_distribution(df_s,:AfterLast)
-    #Error
-    Err, gErr, tErr = check_distribution(df_s,:IncorrectLeave)
-    #Travel
-    TV, gTV, tTV = check_distribution(df_s,:Travel_to)
+    # AfterLast
+    dAF, tAF, sAF, bAF = check_distribution(df_s,:AfterLast)
+    # Error
+    dErr, tErr, sErr, bErr = check_distribution(df_s,:IncorrectLeave)
+    # Trial Rewards Rate
+    df_s[!,:BinnedStreak] = bin_axis(df_s.Streak; unit_step = 5)
+    dfS = summary_xy(df_s,:BinnedStreak,:Cum_Rewards; summary = mean, err = :MouseID, group = grouping)
+    tTRR = @df dfS plot(:BinnedStreak,:Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto,
+    legend = :topleft, ylabel = "Amount of Rewards", xlabel = "Trial")
+    gdc = groupby(df_s,[grouping,:MouseID])
+    df1 = combine(gdc, [:Num_Rewards, :Streak] => ((r,s) -> sum(r)/maximum(s)) => :RewxTrial)
+    D = step2_DoubleAnalysis(df1,grouping,:RewxTrial)
+    sTRR, bTRR = D.nonparametric_plot, D.vplot
+    # Travel
+    dTV, tTV, sTV, bTV = check_distribution(df_s,:Travel_to; summary_opt = summary_opt)
     #Interpoke
-    IP, gIP, tIP = check_distribution(df_p,:PreInterpoke)
+    dIP, tIP,sIP, bIP = check_distribution(df_p,:PreInterpoke; summary_opt = summary_opt)
     #Duration
-    DT, gDT, tDT = check_distribution(df_s,:Trial_duration)
+    dDT, tDT, sDT, bDT = check_distribution(df_s,:Trial_duration; summary_opt = summary_opt)
 
-    plot(AF, gAF, tAF,
-        Err, gErr, tErr,
-        IP, gIP, tIP,
-        DT, gDT, tDT,
-        TV, gTV, tTV,
-        layout = grid(5,3),
+    p1 = plot(tAF, sAF, bAF,
+        tErr, sErr, bErr,
+        tTRR, sTRR, bTRR,
+        layout = grid(3,3),
         size=(1200,1200),
         thickness_scaling = 1)
+    p2 = plot(tDT, sDT, bDT,
+        tIP, sIP, bIP,
+        tTV, sTV, bTV,
+        layout = grid(3,3),
+        size=(1200,1200),
+        thickness_scaling = 1)
+        (p1,p2)
 end
 
 function maintitle!(plt,what::String)

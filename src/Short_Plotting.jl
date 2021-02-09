@@ -26,6 +26,9 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     # !(r.MouseID in sixty_days_old) &&
     ,df)
 end
+for df in (Cas_p, Cas_b, Cas_s)
+    filter!(r -> r.Gen == "Rbp4-cre", df)
+end
 ## Fig 1
 age_al_lim = quantile(Age_s.AfterLast,0.95)
 age_df = filter(r->

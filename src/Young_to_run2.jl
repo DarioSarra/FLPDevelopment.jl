@@ -33,8 +33,8 @@ gd = groupby(Age_s,:Session)
 transform!(gd, :AfterLast => frequency)
 transform!(gd, :Num_Rewards => cumsum => :Cum_Rewards)
 Age_s[!,:RewRate] = Age_s.Cum_Rewards ./ Age_s.Stop
+Age_s[!,:TrialRewRate] = Age_s.Cum_Rewards ./ Age_s.Streak
 # for (df,name) in zip([Age_p, Age_b, Age_s],["Pokes", "Bouts", "Streaks"])
 #     filename = joinpath(path, "Results_" * string(today()),"FullInfo" * name * ".csv")
 #     CSV.write(filename,df)
 # end
-Age_s.CorrectStart
