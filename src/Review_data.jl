@@ -45,6 +45,8 @@ maintitle!(c[1],"Virus No filters")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas1_No_filtersViolin.pdf"))
 maintitle!(c[2],"Virus No filters")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas2_No_filtersViolin.pdf"))
+ALage = group_frequency(Age_s,:AfterLast; group = :Age)
+@df ALage plot(:Xaxis, :Mean, yerror = :Sem, group = :Age, linecolor = :auto)
 ## 30s Duration
 f_Age_s,f_Age_p = FLPDevelopment.joinfilter(Age_s,Age_p,:Trial_duration, 30)
 filt_Age_p = filter(r -> 0 < r.PreInterpoke, filt_Age_p)
@@ -88,7 +90,7 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distrib
 filt_Cas_p = filter(r -> 0 < r.PreInterpoke, Cas_p)
 maintitle!(check_distributions(Cas_s, filt_Cas_p; summary_opt = :MEDIAN),"Virus No filters with median")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Distributions","Cas_No_filters_Median.pdf"))
-##
+############# Analysis
 ALAge0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),Age_s))
 ALAge1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),Age_s))
 Likelyhood_Ratio_test(ALAge0,ALAge1)
@@ -96,9 +98,28 @@ Likelyhood_Ratio_test(ALAge0,ALAge1)
 ALAge00 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),Age_s,Poisson())
 ALAge01 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),Age_s,Poisson())
 Likelyhood_Ratio_test(ALAge00,ALAge01)
-##
-quantile(Cas_s.AfterLast,0.95)
-casdf = filter(r -> r.AfterLast <= 7, Cas_s)
+
+ALCas0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),Cas_s))
+ALCas1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s))
+Likelyhood_Ratio_test(ALCas0,ALCas1)
+
+ALCas00 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),Cas_s,Poisson())
+ALCas01 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s,Poisson())
+Likelyhood_Ratio_test(ALCas00,ALCas01)
+########################## Using each mouse 95% quantile of AfterLast as filter #######################
+agedf = filter(r -> r.Limit, Age_s)
+casdf = filter(r -> r.Limit, Cas_s)
+
+ALAge0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),agedf))
+ALAge1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),agedf))
+ALAge2 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + Sex + (1|MouseID)),agedf))
+Likelyhood_Ratio_test(ALAge0,ALAge1)
+Likelyhood_Ratio_test(ALAge1,ALAge2)
+DoubleAnalysis(agedf,:Age,:AfterLast)
+
+ALAge00 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),agedf,Poisson())
+ALAge01 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),agedf,Poisson())
+Likelyhood_Ratio_test(ALAge00,ALAge01)
 
 ALCas0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),casdf))
 ALCas1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),casdf))
@@ -108,9 +129,48 @@ ALCas00 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),casdf,Po
 ALCas01 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),casdf,Poisson())
 Likelyhood_Ratio_test(ALCas00,ALCas01)
 
+filt_Cas_p = filter(r -> 0 < r.PreInterpoke, Cas_p)
+c = check_distributions(casdf, filt_Cas_p)
+maintitle!(c[1],"Virus No filters")
+
+p_df = group_frequency(casdf,:AfterLast; group = :Virus)
+filter!(r -> !isnan(r.Sem), p_df)
+@df p_df plot(:Xaxis, :Mean, ribbon = :Sem, linecolor = :auto, group = :Virus)
+
+FLPDevelopment.vars_fig(casdf)
+df1 = individual_summary(casdf, :Virus, :AfterLast)
+
 ##
-casdf = filter(r -> r.Performance >=60 && r.Streak <= 60, Cas_s)
+casdf = filter(r -> r.Streak <= 100, Cas_s)
 check = DoubleAnalysis(Cas_s,:Virus,:AfterLast)
 check.nonparametric_plot
 check2 = DoubleAnalysis(casdf,:Virus,:AfterLast)
 check2.nonparametric_plot
+##
+#AfterLast Density per mouse
+p = plot()
+for m in union(Cas_s.MouseID)
+    ongoing = filter(r -> r.MouseID == m, Cas_s)
+    p_df = FLPDevelopment.single_frequency(ongoing,:AfterLast)
+    @df p_df plot!(:Xaxis, :Vals, label = m, linecolor = :auto)
+end
+p
+open_html_table(Age_s)
+gd = groupby(Age_s,[:Session,:MouseID])
+combine(gd) do dd
+    dd1 = filter(r -> !r.Limit, dd)
+    [union(dd1.AfterLast)]
+end
+##
+mdf = DataFrame!(CSV.File("/home/beatriz/Desktop/odour_dose_data_FM - Sheet1.csv"))
+mdf[!, :Stim] = categorical([x == 0 for x in mdf.Stim])
+categorical(mdf.Stim)
+hdf = filter(r -> r.Genotype =="sert", mdf)
+base = fit(MixedModel,@formula(BOLD ~ 1 + Concentration + (1|MouseID)),hdf)
+alt1 = fit(MixedModel,@formula(BOLD ~ 1 + Concentration + Stim + (1|MouseID)),hdf)
+Likelyhood_Ratio_test(base,alt1)
+AICc_test(base, alt1)
+alt2 = fit(MixedModel,@formula(BOLD ~ 1 + Concentration * Stim + (1|MouseID)),hdf)
+Likelyhood_Ratio_test(alt1,alt2)
+alt3 = fit(MixedModel,@formula(BOLD ~ 1 + Concentration&Stim + (1|MouseID)),hdf)
+AICc_test(base, alt3)

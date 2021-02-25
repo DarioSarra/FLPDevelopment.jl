@@ -2,55 +2,128 @@ using Revise, FLPDevelopment, BrowseTables
 gr(size=(600,600), tick_orientation = :out, grid = false,
     linecolor = :black,
     markerstrokecolor = :black,
-    thickness_scaling = 2,
+    thickness_scaling = 1,
     markersize = 8)
 ##
 include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
 for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
+    r.MouseID != "CD09" && # biting, see B1_CD09_2020-07-13 minute30
+    r.MouseID != "RJ58" && # blind
+    r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
+    !(r.MouseID in first_females_group) &&
     r.ProtocolSession == 1
+    # r.Performance > 25 && no need because minimum is 31
+    # r.Streak < 75 && #checking
+    # previously tried filters
+    # r.MouseID != "RJ27" && # water leak
+    # r.MouseID != "RJ35" && # water leak
+    # r.MouseID != "RJ43" && # water leak
+    # r.MouseID != "RJ57" && # biting, see B1_RJ57_2020-09-28 minute 20:38
+    # r.MouseID != "RJ70" && # biting, see B1_RJ70_2020-09-28 minute 24:23
+    # !(r.MouseID in second_females_juveniles) &&
+    # !(r.MouseID in sixty_days_old) &&
     ,df)
 end
-##
-#=
-to do list
-- single animal distributions
-- group median and ci plus mean animal afterlast plot
-- CD9 interpoke, trial duaration and travel time against Rbp4
-- CD9 long trials interpoke, trial duaration and travel time against short trials
-- CD9 video
-=#
-#=
- Young vs Adults mice are in the Age labelled dataset (Age_p: pokes, Age_b: bouts Age_s: streaks)
- Caspase vs tdTomato mice are in the Cas labelled dataset (Cas_p: pokes, Cas_b: bouts Cas_s: streaks)
-=#
-## Afterlast df selection
-cas_df = filter(r->
-    r.Gen == "Rbp4-cre" &&
-    # r.Performance == 25 &&
-    r.MouseID != "CD09"
-    # r.PreInterpoke <= 1
-    # r.AfterLast <= 6
-    # r.AfterLast_frequency >= 0.05
-    ,Cas_s)
-age_df = filter(r->
-    # r.P_AfterLast >= 0.06
-    r.Sex != "c"
-    # r.Performance >= 25
-    # r.PreInterpoke <= 1
-    # r.AfterLast_frequency >= 0.05
-    ,Age_s)
-maximum(age_df.AfterLast)
-age_df
-open_html_table(cas_df)
-individual_summary(cas_df,:Virus,:AfterLast)
+for df in (Cas_p, Cas_b, Cas_s)
+    filter!(r -> r.Gen == "Rbp4-cre", df)
+end
+agedf = filter(r -> r.Limit, Age_s)
+casdf = filter(r -> r.Limit, Cas_s)
+agedf[!,:BinnedStreak] = bin_axis(agedf.Streak; unit_step = 5)
+casdf[!,:BinnedStreak] = bin_axis(casdf.Streak; unit_step = 5)
+nrow(agedf)/nrow(Age_s)
+nrow(agedf)-nrow(Age_s)
+nrow(casdf)/nrow(Cas_s)
+nrow(casdf)-nrow(Cas_s)
+open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
+open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
+########################### Example Session Plots ######################################
+tt = filter(r -> r.MouseID == "RJ23" && 08<= r.Streak <= 52, Age_p)
+plt = plot(legend = false, xlims = (-1,16), xlabel = "Trials",
+    yaxis = false, yticks = false, ylabel = "Time (seconds)")
+for r in eachrow(tt)
+    FLPDevelopment.session_plot!(plt, r)
+end
+plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","Session.pdf"))
 ########################### Afterlast Plots ######################################
+#calculate mean of var for each mouse over a trial's bin
+overtrialplot = FLPDevelopment.overtrial_plot(agedf, :Age, :AfterLast)
+ylabel!("Mean consecutive failures")
+xlabel!("Trials")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeALTrials.pdf"))
+
+#calculate mean frequency of afterlas before leaving per mouse and group
+frequencyplot = FLPDevelopment.frequency_plot(agedf, :Age, :AfterLast)
+ylabel!("Frequency")
+xlabel!("Consecutive failures")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeALFreq.pdf"))
+
+#calculate mean and sem afterlast per mouse and group
+FLPDevelopment.mean_sem_scatter(agedf, :Age, :AfterLast)[1]
+agedf[:,[:Age,:Sex]]
+ylabel!("Mean consecutive failures")
+xlabel!("Group")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeALScat.pdf"))
+
+ALAge0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),agedf))
+ALAge1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),agedf))
+ALAge2 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + Sex + (1|MouseID)),agedf))
+Likelyhood_Ratio_test(ALAge0,ALAge1)
+Likelyhood_Ratio_test(ALAge1,ALAge2)
+########################### Correct Plots ######################################
+FLPDevelopment.incorrect_fraction_scatter(agedf,:Age,:IncorrectLeave)[1]
+ylabel!("Mean probability of errors")
+xlabel!("Group")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeERRScat.pdf"))
+
+check = filter(r -> r.CorrectStart, agedf)
+ILAge0 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak  + (1|MouseID)),check))
+ILAge1 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak + Age + (1|MouseID)),check))
+ILAge2 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak + Age + Sex + (1|MouseID)),check))
+Likelyhood_Ratio_test(ILAge0,ILAge1)
+Likelyhood_Ratio_test(ILAge1,ILAge2)
+
+########################### Afterlast Plots ######################################
+#calculate mean of var for each mouse over a trial's bin
+overtrialplot = FLPDevelopment.overtrial_plot(casdf, :Virus, :AfterLast)
+ylabel!("Mean consecutive failures")
+xlabel!("Trials")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","VirusALTrials.pdf"))
+
+#calculate mean frequency of afterlas before leaving per mouse and group
+frequencyplot = FLPDevelopment.frequency_plot(casdf, :Virus, :AfterLast)
+ylabel!("Frequency")
+xlabel!("Consecutive failures")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","VirusALFreq.pdf"))
+
+#calculate mean and sem afterlast per mouse and group
+unique(casdf[:,:MouseID])
+FLPDevelopment.mean_sem_scatter(casdf, :Virus, :AfterLast)[2]
+ylabel!("Mean consecutive failures")
+xlabel!("Group")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","VirusALScat.pdf"))
+check = filter(r -> r.Streak <=100,casdf)
+ALCas0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),check))
+ALCas1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),check))
+Likelyhood_Ratio_test(ALCas0,ALCas1)
+########################### Correct Plots ######################################
+FLPDevelopment.incorrect_fraction_scatter(casdf,:Virus,:IncorrectLeave)[2]
+ylabel!("Mean probability of errors")
+xlabel!("Group")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","VirusERRScat.pdf"))
+
+check = filter(r -> r.CorrectStart, casdf)
+ILCas0 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak  + (1|MouseID)),check))
+ILCas1 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak + Virus + (1|MouseID)),check))
+Likelyhood_Ratio_test(ILCas0,ILCas1)
+##
 cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast; nonparametric = true, yspan = (0,6))
 # cas_afterlast = dvAnalysis(cas_df,:Virus,:AfterLast)
 cas_afterlast.plot
 cas_afterlast.normality
-savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/AfterLastCas.pdf")
 age_afterlast = dvAnalysis(age_df,:Age,:AfterLast; nonparametric = true)#; yspan = (1,3)
 # age_afterlast = dvAnalysis(age_df,:Age,:AfterLast)
 age_afterlast.plot
@@ -282,3 +355,18 @@ age_travel = dvAnalysis(ag_df,:Age,:Travel_to)
 age_travel.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SecondTravelTimeJuv.pdf")
+##
+df = agedf
+grouping = [:Age,:Sex]
+vary = :AfterLast
+df1 = individual_summary(df, grouping, vary)
+df2 = group_summary(df1, grouping, vary)
+df2 = combine(groupby(df1,grouping)) do dd
+    m = mean(dd[:,vary])
+    s = sem(dd[:,vary])
+    (Central = m, ERR = (s,s))
+end
+
+FLPDevelopment.mean_sem_scatter(df,grouping,vary)[2]
+FLPDevelopment.mode_ci_scatter(df,grouping,vary)
+println(unique(agedf[:,:MouseID]))

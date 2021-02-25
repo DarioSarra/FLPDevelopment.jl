@@ -14,9 +14,17 @@ function boxpoke(r::DataFrames.DataFrameRow)
     Shape([(start,0),(start,y),(finish,y),(finish,0),(start,0)])
 end
 
+function streakpoke(r::DataFrames.DataFrameRow)
+    y_start = r.Streak - 0.25
+    y_finish = r.Streak + 0.25
+    x_start = r.In
+    x_finish = r.Out
+    Shape([(x_start,y_start),(x_start,y_finish),(x_finish,y_finish),(x_finish, y_start),(x_start,y_start)])
+end
+
 function outcome_col(r::DataFrames.DataFrameRow)
     if r.Reward
-        fcol = :yellow
+        fcol = :green
     elseif !r.Reward
         fcol = :grey
     end
@@ -70,6 +78,15 @@ function protocol_annotate!(p,r::DataFrames.DataFrameRow)
     end
 end
 
+function side_annotate!(p,r::DataFrames.DataFrameRow)
+    if typeof(r.Side) <: Real
+        side =  r.Side == 0 ? "R" : "L"
+    else
+        side = r.Side
+    end
+    annotate!(p,[(-0.5, r.Streak, Plots.text(side, 6, :center))])
+end
+
 function poke_plot!(p,r::DataFrames.DataFrameRow)
     bp = boxpoke(r)
     lcol = stim_col(r)
@@ -77,5 +94,14 @@ function poke_plot!(p,r::DataFrames.DataFrameRow)
     plot!(p,bp, fillcolor = plot_color(fcol, 0.6),linecolor = lcol,linewidth = 1)
     wall_scatter!(p,r,lcol)
     protocol_annotate!(p,r)
+    p
+end
+
+function session_plot!(p,r::DataFrames.DataFrameRow)
+    bp = streakpoke(r)
+    lcol = stim_col(r)
+    fcol = outcome_col(r)
+    plot!(p,bp, fillcolor = plot_color(fcol, 0.6),linecolor = lcol,linewidth = 1)
+    side_annotate!(p,r)
     p
 end

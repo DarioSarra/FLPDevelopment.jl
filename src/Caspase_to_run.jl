@@ -44,9 +44,13 @@ Cas_s[!,:IncorrectLeave] = [!x for x in Cas_s.CorrectLeave]
 Cas_s[!,:P_AfterLast] = [Aprob[a] for a in Cas_s.AfterLast]
 gd = groupby(Cas_s,:Session)
 transform!(gd, :AfterLast => frequency)
+transform!(gd, :AfterLast => (x -> x .<= quantile(x,0.95)) => :Limit)
 transform!(gd, :Num_Rewards => cumsum => :Cum_Rewards)
 Cas_s[!,:RewRate] = Cas_s.Cum_Rewards ./ Cas_s.Stop
 Cas_s[!,:TrialRewRate] = Cas_s.Cum_Rewards ./ Cas_s.Streak
+gdp = groupby(Cas_p,[:Session, :Streak])
+transform!(gdp,:PokeIn => (x -> x .- x[1]) => :In)
+transform!(gdp,[:PokeIn, :PokeOut] => ((x,y) -> y .- x[1]) => :Out)
 # for (df,name) in zip([Cas_p, Cas_b, Cas_s],["Pokes", "Bouts", "Streaks"])
 #     filename = joinpath(path, "Results_" * string(today()),"FullInfo" * name * ".csv")
 #     CSV.write(filename,df)

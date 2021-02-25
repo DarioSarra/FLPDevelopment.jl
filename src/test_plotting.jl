@@ -67,6 +67,14 @@ function group_cdf(df,var; err = :MouseID, group = nothing, points = 100, bounds
     end
 end
 
+function single_frequency(df,xvar)
+    df1 = DataFrame(Xaxis = Int[], Vals = Float64[])
+    for (k,i) in countmap(df[:,xvar])
+        push!(df1, [k,i/nrow(df)])
+    end
+    return sort(df1, :Xaxis)
+end
+
 function individual_frequency(df,xvar; err = :MouseID)
     axis = minimum(df[:,xvar]):maximum(df[:,xvar])
     gd1 = groupby(df, err)
@@ -95,7 +103,7 @@ function group_frequency(df,var; err = :MouseID, group = nothing)
     end
 end
 
-group_distribution(df, var; args...) = length(unique(df[:,var])) > 40 ? group_kde(df, var; args ...) : group_frequency(df, var; args ...)
+group_distribution(df, var; args...) = length(unique(df[:,var])) > 30 ? group_kde(df, var; args ...) : group_frequency(df, var; args ...)
 
 """
     test_normality(df1,xvar,yvar)
@@ -119,31 +127,41 @@ function test_normality(df1,xvar,yvar)
 end
 
 function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
-    gdc = groupby(df,[xvar,err])
+    #evaluate if it's going over multiple grouping columns
+    multiple = typeof(xvar) <: AbstractVector && sizeof(xvar) > 1
+    if multiple
+        gdc = groupby(df,vcat(xvar,err))
+    else
+        gdc = groupby(df,[xvar,err])
+    end
     df1 = combine(yvar => summary => yvar,gdc)
     sort!(df1,xvar)
-    firstval = union(df1[:,xvar])[1]
-    df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
+    if multiple
+        label_df = unique(df1[:,xvar])
+    else
+        label_df = unique(df1[:,[xvar]])
+    end
+    label_df[!,:xpos] = 1:nrow(label_df)
+    leftjoin(df1,label_df; on = xvar)
+    # firstval = union(df1[:,xvar])[1]
+    # df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
     return df1
 end
 
 function group_summary(df1,xvar,yvar; normality = true)
     if normality
         central = mean
-        confidence = OneSampleTTest
     else
         central = median
-        confidence = SignedRankTest
     end
     df2 = combine(groupby(df1,xvar)) do dd
-        # m = round(central(dd[:,yvar]), digits = 2)
-        # ci = confint(confidence(dd[:,yvar]))
-        # ci1 = round(m - ci[1], digits = 2)
-        # ci2 = round(ci[2] - m, digits = 2)
+        # using bootstrap to calculate the central point and the 95% CI
         b = bootstrap(central,dd[:,yvar], BasicSampling(100000))
+        #bootstrap confint returns a tuple containing a tuple with the statistic
+        #estimates and the CI lower and uppper bounds
         m, lower, upper = confint(b,BasicConfInt(0.95))[1]
-        ci1 = m - lower#, digits = 2
-        ci2 = upper - m#, digits = 2
+        ci1 = m - lower
+        ci2 = upper - m
         (Central = m, ERR = (ci2,ci1))
     end
     return df2
@@ -300,6 +318,138 @@ function check_distributions(df_s,df_p; grouping = nothing, summary_opt = :MEAN)
         (p1,p2)
 end
 
+function overtrial_plot(df, grouping, var)
+    #calculate mean of var for each mouse over a trial's bin
+    dfSum = summary_xy(df,:BinnedStreak,var; summary = mean, err = :MouseID, group = grouping)
+    #plot mean over mice plus sem
+    overtrialplot = @df dfSum plot(:BinnedStreak,:Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto,
+        legend = :topright, ylabel = String(var), xlabel = "Trial")
+    return overtrialplot
+end
+
+function frequency_plot(df, grouping, var)
+    df1 = group_frequency(df,var; group = grouping)
+    filter!(r -> !isnan(r.Sem), df1)
+    @df df1 plot(:Xaxis, :Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto)
+end
+
+function mean_sem_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var)
+    df2 = combine(groupby(df1,grouping)) do dd
+        m = mean(dd[:,var])
+        s = sem(dd[:,var])
+        (Central = m, ERR = (s,s))
+    end
+    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
+        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
+        xaxis = :xaxis
+    else
+        xaxis = grouping
+    end
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(xaxis)),
+        legend = false)
+    return plt, df2
+end
+
+function mode_ci_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var)
+    df2 = group_summary(df1, grouping, var; normality = false)
+    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
+        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
+        xaxis = :xaxis
+    else
+        xaxis = :grouping
+    end
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(xaxis)),
+        legend = false)
+    return plt, df2
+end
+
+function mean_ci_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var)
+    df2 = group_summary(df1, grouping, var; normality = true)
+    @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(grouping)),
+        legend = false)
+end
+
+function incorrect_fraction_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var; summary = incorrect_fraction)
+    df2 = combine(groupby(df1,grouping)) do dd
+        m = mean(dd[:,var])
+        s = sem(dd[:,var])
+        (Central = m, ERR = (s,s))
+    end
+    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
+        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
+        xaxis = :xaxis
+    else
+        xaxis = grouping
+    end
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(xaxis)),
+        legend = false)
+    return plt, df2
+end
+
+function var_plots(df,var; grouping = grouping)
+    # bins along streaks to plot over trials
+    df[!,:BinnedStreak] = bin_axis(df.Streak; unit_step = 5)
+    overtrialplot = overtrial_plot(df,var; grouping = grouping)
+
+    #prepare violin plot, each group density and dotplot has to be calculate separetely
+    vals = union(df[:,grouping])
+    vplot = @df  df[df[:,grouping] .== vals[1],:] violin(string.(cols(grouping)),cols(var),
+         label = vals[1], side = :left, legend = :top)
+     @df df[df[:,grouping] .== vals[2],:] violin!(string.(cols(grouping)),cols(var),
+        label = vals[2], side = :right)
+    @df df[df[:,grouping] .== vals[1],:] dotplot!(string.(cols(grouping)),cols(var),
+        label = "", side = :left, legend = :top, markersize = 4, markercolor = :grey, markeralpha = 0.7)
+    @df df[df[:,grouping] .== vals[2],:] dotplot!(string.(cols(grouping)),cols(var),
+        label = "", side = :right, legend = :top, markersize = 4, markercolor = :grey,
+        markeralpha = 0.7)
+
+    # scatter plot of mean of the mice's mean and sem
+    df1 = individual_summary(df, grouping, var)
+    df2 = group_summary(df1, grouping, var; normality = true)
+    statisticplot = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(grouping)),
+        legend = false)
+
+    return overtrialplot, vplot, statisticplot
+end
+
+function vars_fig(df_s; grouping = nothing, summary_opt = :MEAN)
+    if isnothing(grouping)
+        if in(:Age,propertynames(df_s))
+            grouping = :Age
+        elseif in(:Virus,propertynames(df_s))
+            grouping = :Virus
+         end
+    end
+    # return variable mean over trials, distribution, and statistics
+    ALt,ALd,ALs = var_plots(df_s, :AfterLast; grouping = grouping)
+    ILt,ILd,ILs = var_plots(df_s, :IncorrectLeave; grouping = grouping)
+    plot(ALt,ALd,ALs,
+        ILt,ILd,ILs,
+        layout = grid(2,3),
+        size=(1200,1200),
+        thickness_scaling = 1)
+end
+
+# Function to add a title over multiple figures
 function maintitle!(plt,what::String)
     y = ones(3)
     title = Plots.scatter(y, marker=0, markeralpha=0, grid = false,
