@@ -68,11 +68,20 @@ ylabel!("Mean consecutive failures")
 xlabel!("Group")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeALScat.pdf"))
 
+#calculate mean cumulative of afterlas before leaving per mouse and group
+tt = FLPDevelopment.individual_cdf(agedf,:AfterLast)
+open_html_table(tt)
+cdfplot = FLPDevelopment.cdf_plot(agedf, :Age, :AfterLast; estimated = true)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeALCum.pdf"))
+
+agedf.Age = categorical(agedf.Age)
 ALAge0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),agedf))
 ALAge1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),agedf))
 ALAge2 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Age + Sex + (1|MouseID)),agedf))
 Likelyhood_Ratio_test(ALAge0,ALAge1)
 Likelyhood_Ratio_test(ALAge1,ALAge2)
+coef(ALAge1)
+PALAge0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),agedf,Poisson())
 ########################### Correct Plots ######################################
 FLPDevelopment.incorrect_fraction_scatter(agedf,:Age,:IncorrectLeave)[1]
 ylabel!("Mean probability of errors")
@@ -101,14 +110,22 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","
 
 #calculate mean and sem afterlast per mouse and group
 unique(casdf[:,:MouseID])
-FLPDevelopment.mean_sem_scatter(casdf, :Virus, :AfterLast)[2]
+FLPDevelopment.mean_sem_scatter(casdf, :Virus, :AfterLast)[1]
 ylabel!("Mean consecutive failures")
 xlabel!("Group")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","VirusALScat.pdf"))
-check = filter(r -> r.Streak <=100,casdf)
-ALCas0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),check))
-ALCas1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),check))
+
+#calculate mean cumulative of afterlas before leaving per mouse and group
+cdfplot = FLPDevelopment.cdf_plot(casdf, :Virus, :AfterLast; estimated = true)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","VirusALCum.pdf"))
+
+check = filter(r -> r.CorrectStart,Cas_s)
+ALCas0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),casdf))
+ALCas1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),casdf))
 Likelyhood_Ratio_test(ALCas0,ALCas1)
+PALCas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),casdf,Poisson())
+PALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),casdf,Poisson())
+Likelyhood_Ratio_test(PALCas0,PALCas1)
 ########################### Correct Plots ######################################
 FLPDevelopment.incorrect_fraction_scatter(casdf,:Virus,:IncorrectLeave)[2]
 ylabel!("Mean probability of errors")
@@ -135,8 +152,6 @@ savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/Corr
 age_correct = dvAnalysis(age_df,:Age,:CorrectLeave, yspan = (0,1))
 age_correct.plot
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/CorrectJuv.pdf")
-
-
 
 ############################ Pokes  example #################################
 cases = findall((Cas_p.Reward .== false) .& (Cas_p.Correct .== true) .& (Cas_p.PokeInStreak .== 2))
@@ -212,9 +227,6 @@ df4
     markersize = 3, legend = false, color_palette = [:black,:red])
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SplitPMFJuv.pdf")
-
-
-
 ###################### Interpoke interval time ####################################
 # Caspase
 limit = quantile(collect(skipmissing(Cas_p.PreInterpoke)),0.95)
@@ -237,8 +249,6 @@ age_interpoke = dvAnalysis(age_df,:Age,:PreInterpoke; yspan = (0.1,0.5))
 age_interpoke.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/InterpokeJuv.pdf")
-
-
 ######################### Simple Travel time #######################################
 # Caspase
 limit = quantile(collect(skipmissing(Cas_s.Travel_to)),0.95)
@@ -260,9 +270,6 @@ age_interpoke = dvAnalysis(age_df,:Age,:Travel_to; yspan = (8,33))
 age_interpoke.plot
 ##
 savefig("/Volumes/GoogleDrive/My Drive/Reports for Zach/Development project/SimpleTravelJuv.pdf")
-
-
-
 ######################### Complex Travel time #######################################
 #Caspase
 pre_cas = filter(r -> 0 < r.Travel_to <= 60, Cas_s)
@@ -370,3 +377,35 @@ end
 FLPDevelopment.mean_sem_scatter(df,grouping,vary)[2]
 FLPDevelopment.mode_ci_scatter(df,grouping,vary)
 println(unique(agedf[:,:MouseID]))
+#########################
+quantile(Age_s.AfterLast,0.95)
+Age_s.NL = Age_s.AfterLast .<= 7
+FLPDevelopment.frequency_plot(Age_s, :NL, :AfterLast)
+gd = groupby(Age_s,[:MouseID,:Limit])
+df1 = combine(gd, :AfterLast => mean=> :AfterLast)
+open_html_table(df1)
+df2 = combine(groupby(df1,:Limit)) do dd
+    m = mean(dd[:,:AfterLast])
+    s = sem(dd[:,:AfterLast])
+    (Central = m, ERR = (s,s))
+end
+FLPDevelopment.frequency_plot(Cas_s, :Limit, :AfterLast)
+gd = groupby(Cas_s,[:MouseID,:Limit])
+df1 = combine(gd, :AfterLast => maximum => :Max_AfterLast, :AfterLast => length => :Trials)
+df1 = combine(gd, :AfterLast => (x-> (union(x),)) => :Max_AfterLast, :AfterLast => length => :Trials)
+open_html_table(df1)
+df2 = combine(groupby(df1,:Limit)) do dd
+    m = mean(dd[:,:AfterLast])
+    s = sem(dd[:,:AfterLast])
+    (Central = m, ERR = (s,s))
+end
+###############
+combine(groupby(agedf, :Age), :MouseID => x -> length(union(x)))
+combine(groupby(casdf, :Virus), :MouseID => x -> length(union(x)))
+##
+kcas = group_kde(Cas_s,:Trial_duration, group = :Virus)
+@df kcas plot(:Xaxis,:Mean, ribbon = :Sem, group = :Virus)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","Caspase.pdf"))
+
+kage = group_kde(Age_s,:Trial_duration, group = :Age)
+@df kage plot(:Xaxis,:Mean, ribbon = :Sem, group = :Age, xlims = (0,300))

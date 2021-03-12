@@ -49,7 +49,7 @@ end
 
 function DoubleAnalysis(df,xvar,yvar; yspan = :auto, ystep = :auto, summary_opt = :MEAN, showmice = false)
     df1 = step1_DoubleAnalysis(df,xvar,yvar; summary_opt = summary_opt)
-    step2_DoubleAnalysis(df1,xvar,yvar; yspan = yspan, ystep = ystep, summary_opt = summary_opt, showmice = false)
+    step2_DoubleAnalysis(df1,xvar,yvar; yspan = yspan, ystep = ystep, summary_opt = summary_opt, showmice = showmice)
 end
 
 function step1_DoubleAnalysis(df,xvar,yvar; summary_opt = :MEAN)

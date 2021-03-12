@@ -42,38 +42,54 @@ function group_kde(df,var; err = :MouseID, group = nothing, points = 100, bounds
         end
     end
 end
-
-function individual_cdf(df,var; err = :MouseID, group = nothing, points = 100, bounds = extrema(df[:,var]))
-    axis = ecdf(df[:,var]).sorted_values
+function individual_ecdf(df,xvar; err = :MouseID, axis = nothing)
+    if isnothing(axis)
+        axis = ecdf(df[:,xvar]).sorted_values
+    end
     gd1 = groupby(df, err)
     df1 = combine(gd1) do dd
-        CUM = ecdf(dd[:,var])
+        CUM = ecdf(dd[:,xvar])
         (Xaxis = collect(axis), Vals = CUM(axis))
     end
 end
 
-function group_cdf(df,var; err = :MouseID, group = nothing, points = 100, bounds = extrema(df[:,var]))
+function individual_cdf(df,xvar; err = :MouseID, axis = nothing)
+
+    gd1 = groupby(df, err)
+    df1 = combine(gd1) do dd
+        df2 = DataFrame(Xaxis = Int[], Vals = Float64[])
+        for (k,i) in countmap(dd[:,xvar])
+            push!(df2, [k,i/nrow(dd)])
+        end
+        df2
+    end
+    sort!(df1,:Xaxis)
+    gdp = groupby(df1,err)
+    transform!(gdp,:Vals => cumsum => :Vals)
+    return sort(df1, :Xaxis)
+end
+
+function group_cdf(df,xvar; err = :MouseID, group = nothing, estimated = false)
+    axis = minimum(df[:,xvar]):maximum(df[:,xvar])
+    if estimated
+        cumulative = individual_ecdf
+    else
+        cumulative = individual_cdf
+    end
     if isnothing(group)
-        df = individual_cdf(df,var; err = err, points = points, bounds = bounds)
+        df = cumulative(df,xvar; err = err, axis = axis)
         gd = groupby(df,:Xaxis)
         return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem)
     else
         gd1 = groupby(df, group)
         res = combine(gd1) do dd
-            m_res = individual_cdf(dd,var; err = err, points = points, bounds = bounds)
+            m_res = cumulative(dd,xvar; err = err, axis = axis)
             gd2 = groupby(m_res,:Xaxis)
             combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem)
         end
     end
 end
 
-function single_frequency(df,xvar)
-    df1 = DataFrame(Xaxis = Int[], Vals = Float64[])
-    for (k,i) in countmap(df[:,xvar])
-        push!(df1, [k,i/nrow(df)])
-    end
-    return sort(df1, :Xaxis)
-end
 
 function individual_frequency(df,xvar; err = :MouseID)
     axis = minimum(df[:,xvar]):maximum(df[:,xvar])
@@ -143,8 +159,8 @@ function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
     end
     label_df[!,:xpos] = 1:nrow(label_df)
     leftjoin(df1,label_df; on = xvar)
-    # firstval = union(df1[:,xvar])[1]
-    # df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
+    firstval = union(df1[:,xvar])[1]
+    df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
     return df1
 end
 
@@ -190,10 +206,12 @@ function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto, showmice =
         yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),cols(xvar)),
-        legend = false)
+        legend = false,
+        markersize = 10,
+        markerstroke = 1)
     if showmice
         @df df1 scatter!(:xpos,cols(yvar),
-        markersize = 3,
+        markersize = 5,
         alpha = 0.5,
         color = :grey,
         ylims = yspan,
@@ -333,6 +351,13 @@ function frequency_plot(df, grouping, var)
     @df df1 plot(:Xaxis, :Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto)
 end
 
+function cdf_plot(df, grouping, var; estimated = false)
+    df1 = group_cdf(df,var; group = grouping, estimated = estimated)
+    filter!(r -> !isnan(r.Sem), df1)
+    @df df1 plot(:Xaxis, :Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto,
+     legend=:bottomright, xlabel = String(var), ylabel = "Cumulative distribution")
+end
+
 function mean_sem_scatter(df, grouping, var)
     df1 = individual_summary(df, grouping, var)
     df2 = combine(groupby(df1,grouping)) do dd
@@ -456,4 +481,134 @@ function maintitle!(plt,what::String)
     axis=false, leg=false,ticks = nothing, size = (200,1200),
     annotations=(2, y[2], Plots.text(what)))
     plot(title, plt, layout = grid(2,1, heights = [0.05,0.95]))
+end
+
+function median_duration(df, group, variable)
+    if group == :Age
+        firstval = "Adults"
+        vals = ["Adults", "Juveniles"]
+    elseif group == :Virus
+        firstval = "tdTomato"
+        vals = ["tdTomato", "Caspase"]
+    end
+    gd = groupby(df, [:MouseID, group])
+    df2 = combine(gd, variable => median => variable)
+    df2.xpos = [x == firstval ? 1 : 2 for x in df2[:, group]]
+    plt = @df df2 scatter(:xpos, cols(variable),
+        xlims = (0.5, 2 + 0.5),
+        # xticks = (:xpos,cols(group)),
+        xticks = ([1,2], vals),
+        legend = false)
+    return plt, df2
+end
+
+function duration_analysis(df, group, variable)
+    # med_scat, med_df = FLPDevelopment.median_duration(df, group, variable)
+    median_analysis = DoubleAnalysis(df,group, variable;summary_opt = :MEDIAN, showmice = true)
+    xlabel!(median_analysis.nonparametric_plot, String(group))
+    ylabel!(median_analysis.nonparametric_plot, String(variable))
+    k = group_kde(df,variable, group = group)
+    dist = @df k plot(:Xaxis,:Mean, ribbon = :Sem, group = cols(group), linecolor = :auto,
+    ylabel = "PDF", xlabel = String(variable))
+    # return dist, med_scat, med_df
+    return dist, median_analysis.nonparametric_plot
+end
+
+function all_duration_analysis(poke, streak, group)
+    trial_d, trial_s = duration_analysis(streak,group, :Trial_duration)
+    pokep = filter(r -> r.PreInterpoke > 0, poke)
+    inter_d, inter_s = duration_analysis(pokep,group, :PreInterpoke)
+    poke_d, poke_s = duration_analysis(pokep,group, :PokeDur)
+    travel_d, travel_s = duration_analysis(streak,group, :Travel_to)
+
+    p1 = plot(trial_d, travel_d,
+        trial_s, travel_s,
+        layout = grid(2,2),
+        size=(874,620),
+        thickness_scaling = 1)
+
+    p2 = plot(inter_d,poke_d,
+        inter_s, poke_s,
+        layout = grid(2,2),
+        size=(874,620),
+        thickness_scaling = 1)
+    return p1,p2
+end
+
+function bin_duration(df,variable, group; modality = :QUANTILE, qs = 0.1:0.1:0.9, length = 10, unit_step = nothing, fontx = 11)
+    df1 = calculate_bin_duration(df,variable, group; modality = modality, qs = qs, length = length, unit_step = unit_step)
+    plot_bin_duration(df1, group; variable = String(variable), fontx = fontx)
+end
+
+function calculate_bin_duration(df,variable, group; modality = :QUANTILE, qs = 0.1:0.1:0.9, length = 10, unit_step = nothing)
+    df1 = copy(df[:, [:MouseID, group, variable]])
+    future_col = Symbol("Binned_" * String(variable))
+    if modality == :QUANTILE
+        treshvec = quantile_bin(df,variable, group; qs = qs)
+    elseif modality == :STEP
+        treshvec = range_bin(df[:,variable]; length = length, unit_step = unit_step)
+    end
+    binvec = [findfirst(x .<= treshvec) for x in df1[:,variable]]
+    valvec = [isnothing(x) ? treshvec[end] : treshvec[x] for x in binvec]
+    df1[!, future_col] = valvec
+    gd = groupby(df1,[:MouseID, group])
+    df3 = combine(gd) do dd
+        df2 = DataFrame(Bin = Float64[], Count = Int[])
+        # for (k,v) in countmap(dd[:, future_col])
+        for t in treshvec
+            push!(df2,[t,sum(dd[:,future_col] .== t)])
+        end
+        df2
+    end
+    sort!(df3,[:Bin,:MouseID])
+    # rename!(df3, :Bin => Symbol("Binned_" * String(variable)))
+end
+
+function quantile_bin(df,variable, group; qs = 0.1:0.1:0.9)
+    dist = fit(Gamma,df1[:,variable])
+    treshvec = quantile.(dist,qs)
+    push!(treshvec, treshvec[end] + treshvec[end] - treshvec[end-1])
+    # binvec = [findfirst(x .<= treshvec) for x in df1[:,variable]]
+    # valvec = [isnothing(x) ? treshvec[end] : treshvec[x] for x in binvec]
+    return treshvec, valvec
+end
+
+function range_bin(v; length = 10, unit_step = nothing)
+    if isnothing(unit_step)
+        treshvec = collect(range(extrema(v)...;length = length))
+        push!(treshvec, treshvec[end] + treshvec[end] - treshvec[end-1])
+        return treshvec
+    else
+        treshvec = collect(range(extrema(v)...;step = unit_step))
+        push!(treshvec, treshvec[end] + treshvec[end] - treshvec[end-1])
+        return treshvec
+    end
+end
+
+function plot_bin_duration(df, group; variable = "undef", fontx = 11)
+    plots = []
+    for m in union(df.MouseID)
+        dd = filter(r -> r.MouseID == m, df)
+        ntrials = sum(dd.Count)
+        if group == :Virus
+            c = dd[1,:Virus] == "Caspase" ? :red : :black
+        elseif group == :Age
+            c = dd[1,:Age] == Juveniles ? :red : :black
+        else
+            c = :auto
+        end
+        plt = @df dd bar(:Bin,:Count,
+            xticks = round.(union(:Bin), digits = 2),
+            xrotation = 45,
+            xtickfontsize = fontx,
+            xlabel = String(variable),
+            yticks = 0:5:100,
+            grid = true,
+            color = c,
+            ylabel = m,
+            label = "n trials = " * string(ntrials),
+            legend = :top)
+        push!(plots, plt)
+    end
+    return plots
 end

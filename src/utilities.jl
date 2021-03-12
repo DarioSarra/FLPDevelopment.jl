@@ -81,12 +81,25 @@ return a vector
 """
 function bin_axis(v; length = 50, unit_step = nothing)
     if isnothing(unit_step)
-        r = range(extrema(v)...;length = 50)
+        r = range(extrema(v)...;length = length)
         return [round(r[findfirst(r .>= x )], digits=1) for x in v]
     else
         r = range(extrema(v)...;step = unit_step)
         return [isnothing(findfirst(r .>= x )) ? last(r) + step(r) : r[findfirst(r .>= x )] for x in v]
     end
+end
+
+"""
+    quantile_vec(vec, bins)
+
+retunr the quantile position, from 1 to bins, of each element of a vectir vec
+"""
+function quantile_vec(vec, bins)
+    step = 1/(bins)
+    qbins = round.(collect(step .* (1:bins)), digits = 3)
+    qs = quantile(vec,qbins)
+    pre = [findfirst(x .<= qs) for x in vec]
+    [isnothing(x) ? 1 : qbins[x] for x in pre]
 end
 
 """
