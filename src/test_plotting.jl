@@ -536,17 +536,18 @@ function all_duration_analysis(poke, streak, group)
 end
 
 function bin_duration(df,variable, group; modality = :QUANTILE, qs = 0.1:0.1:0.9, length = 10, unit_step = nothing, fontx = 11)
-    df1 = calculate_bin_duration(df,variable, group; modality = modality, qs = qs, length = length, unit_step = unit_step)
-    plot_bin_duration(df1, group; variable = String(variable), fontx = fontx)
+    mice_bin = calculate_bin_duration(df,variable, group; modality = modality, qs = qs, length = length, unit_step = unit_step)
+    group_bin = combine(groupby(mice_bin,:Bin), :Count=> mean, :Count => sem)
+    return plot_bin_duration(mice_bin, group; variable = String(variable), fontx = fontx), group_bin
 end
 
 function calculate_bin_duration(df,variable, group; modality = :QUANTILE, qs = 0.1:0.1:0.9, length = 10, unit_step = nothing)
     df1 = copy(df[:, [:MouseID, group, variable]])
     future_col = Symbol("Binned_" * String(variable))
     if modality == :QUANTILE
-        treshvec = quantile_bin(df,variable, group; qs = qs)
+        treshvec = quantile_bin(df1[:,variable]; qs = qs)
     elseif modality == :STEP
-        treshvec = range_bin(df[:,variable]; length = length, unit_step = unit_step)
+        treshvec = range_bin(df1[:,variable]; length = length, unit_step = unit_step)
     end
     binvec = [findfirst(x .<= treshvec) for x in df1[:,variable]]
     valvec = [isnothing(x) ? treshvec[end] : treshvec[x] for x in binvec]
@@ -564,13 +565,11 @@ function calculate_bin_duration(df,variable, group; modality = :QUANTILE, qs = 0
     # rename!(df3, :Bin => Symbol("Binned_" * String(variable)))
 end
 
-function quantile_bin(df,variable, group; qs = 0.1:0.1:0.9)
-    dist = fit(Gamma,df1[:,variable])
+function quantile_bin(vec; qs = 0.1:0.1:0.9)
+    dist = fit(Gamma,vec)
     treshvec = quantile.(dist,qs)
     push!(treshvec, treshvec[end] + treshvec[end] - treshvec[end-1])
-    # binvec = [findfirst(x .<= treshvec) for x in df1[:,variable]]
-    # valvec = [isnothing(x) ? treshvec[end] : treshvec[x] for x in binvec]
-    return treshvec, valvec
+    return treshvec
 end
 
 function range_bin(v; length = 10, unit_step = nothing)

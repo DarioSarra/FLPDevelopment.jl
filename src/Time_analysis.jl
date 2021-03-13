@@ -103,13 +103,13 @@ end
 @df df3 groupedbar(:Quantile, :Count, group = cols(group), xticks = 0:1/(bins):1)
 ###### Binned duration plots
 trial = FLPDevelopment.bin_duration(Cas_s,:Trial_duration,:Virus)
-plt = plot(trial..., size = (1754,1240), layout = (3,5))
+plt = plot(trial[1]..., size = (1754,1240), layout = (3,5))
 maintitle!(plt, "Trial Duration")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusTrialDurations.pdf"))
 
 check = filter(r -> r.Travel_to > 0, Cas_s)
 travel = FLPDevelopment.bin_duration(check,:Travel_to,:Virus)
-plt = plot(travel..., size = (1754,1240), layout = (3,5))
+plt = plot(travel[1]..., size = (1754,1240), layout = (3,5))
 maintitle!(plt, "Travel Duration")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusTravelDurations.pdf"))
 
@@ -118,33 +118,117 @@ inter = FLPDevelopment.bin_duration(check,:PreInterpoke,:Virus)
 check2 = FLPDevelopment.calculate_bin_duration(check,:PreInterpoke,:Virus)
 bn = round.(union(check2.Bin), digits =2)
 bn = join(string.(bn), " ")
-plt = plot(inter..., size = (1754,1240), layout = (3,5))
+plt = plot(inter[1]..., size = (1754,1240), layout = (3,5))
 maintitle!(plt, "InterPoke Duration\n" * bn)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusInterpokeDurations.pdf"))
 
-check = filter(r -> 0 < r.PreInterpoke <= 1, Cas_p)
-inter = FLPDevelopment.bin_duration(check,:PreInterpoke,:Virus; modality = :STEP, unit_step = 0.05)
-plt = plot(inter..., size = (1754,1240), layout = (3,5))
-maintitle!(plt, "InterPoke Duration\n" * bn)
+check = filter(r -> 0 < r.PreInterpoke <= 0.5, Cas_p)
+shortinter = FLPDevelopment.bin_duration(check,:PreInterpoke,:Virus; modality = :STEP, unit_step = 0.05)
+plt = plot(shortinter[1]..., size = (1754,1240), layout = (3,5))
+maintitle!(plt, "Short InterPoke Duration\n" * bn)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusShortInterpokeDurations.pdf"))
 
 check = filter(r -> r.Reward, Cas_p)
 rew = FLPDevelopment.bin_duration(check,:PokeDur,:Virus)
-plt = plot(rew..., size = (1754,1240), layout = (3,5))
+plt = plot(rew[1]..., size = (1754,1240), layout = (3,5))
 maintitle!(plt, "Rewards Poke Duration")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusRewardDurations.pdf"))
 
 check = filter(r -> !r.Reward, Cas_p)
 failures = FLPDevelopment.bin_duration(check,:PokeDur,:Virus)
-plt = plot(failures..., size = (1754,1240), layout = (3,5))
+plt = plot(failures[1]..., size = (1754,1240), layout = (3,5))
 maintitle!(plt, "Failures Poke Duration")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusFailuresDurations.pdf"))
 
-check = filter(r -> 0 < !r.Reward && r.PokeDur <= 0.5, Cas_p)
-failures = FLPDevelopment.bin_duration(check,:PokeDur,:Virus; modality = :STEP, unit_step = 0.05)
-plt = plot(failures..., size = (1754,1240), layout = (3,5))
+check = filter(r -> 0 < !r.Reward && r.PokeDur <= 1, Cas_p)
+shortfailures = FLPDevelopment.bin_duration(check,:PokeDur,:Virus; modality = :STEP, unit_step = 0.05)
+plt = plot(shortfailures[1]..., size = (1754,1240), layout = (3,5))
 maintitle!(plt, "Short Failures Poke Duration")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusShortFailuresDurations.pdf"))
+
+plot(
+    (@df shortfailures[2] bar(:Bin,:Count_mean, yerr = :Count_sem, xlabel = "Short Poke Duration", xticks = 0:0.1:1, title = "Filtered: Poke dur. > 0.3, Interpoke dur. > 0.1")),
+    (@df shortinter[2] bar(:Bin,:Count_mean, yerr = :Count_sem, xlabel = "Short Interpoke Duration")),
+    layout = (2,1),
+    size=(620,874)
+    )
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusSelectionDurations.pdf"))
+#########
+fCas_p = filter(r->r.PokeDur > 0.3 &&
+    (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
+    (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
+    Cas_p)
+    gd = groupby(fCas_p,[:MouseID,:Session,:Virus])
+    fCas_s = combine(gd) do dd
+        process_streaks(dd)
+    end
+    fpdf = group_frequency(fCas_s,:AfterLast, group = :Virus)
+    # open_html_table(Cas_p)
+    sort!(fpdf,:Xaxis)
+    fpdf[isnan.(fpdf.Sem),:Sem] .= 0
+    @df fpdf plot(:Xaxis, :Mean, ribbon = :Sem, group = :Virus,
+        linecolor = :auto, ylims=(0,0.4), xlims = (0,29))
+    pdf = group_frequency(Cas_s,:AfterLast, group = :Virus)
+        sort!(pdf,:Xaxis)
+        maximum(pdf.Xaxis)
+        pdf[isnan.(pdf.Sem),:Sem] .= 0
+        @df pdf plot(:Xaxis, :Mean, ribbon = :Sem, group = :Virus,
+            linecolor = :auto, ylims=(0,0.4), xlims = (0,29))
+plot(
+    (@df pdf plot(:Xaxis, :Mean, ribbon = :Sem, group = :Virus,
+        linecolor = :auto, ylims=(0,0.35), xlims = (0,29), xlabel = "Consecutive Failures",
+        title = "Unfiltered")),
+    (@df fpdf plot(:Xaxis, :Mean, ribbon = :Sem, group = :Virus,
+        linecolor = :auto, ylims=(0,0.37), xlims = (0,29), xlabel = "Consecutive Failures",
+        title = "Filtered: Poke dur. > 0.3, Interpoke dur. > 0.1")),
+    layout = (2,1),
+    size=(620,874)
+    )
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusFilteredFailures.pdf"))
+##
+PALCas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),fCas_s,Poisson())
+PALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),fCas_s,Poisson())
+fCas_s.Check = predict(PALCas1)
+open_html_table(fCas_s[:,[:MouseID,:Streak,:Virus,:AfterLast,:Check]])
+Likelyhood_Ratio_test(PALCas0,PALCas1)
+##
+BCorrCas0 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + (1|MouseID)),fCas_s,Bernoulli())
+BCorrCas1 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + Virus + (1|MouseID)),fCas_s,Bernoulli())
+Likelyhood_Ratio_test(BCorrCas0,BCorrCas1)
+##
+#= example biting CD17
+    trial 55 good clean minute x:xx
+    trial 99 bad clean minute xx:xx
+=#
+streak_num = 55
+if streak_num == 55
+    pathstring = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-GoodBiting.pdf")
+    plttitle = "Good filtering"
+elseif streak_num == 99
+    pathstring = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-BadBiting.pdf")
+    plttitle = "Bad filtering"
+end
+tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == streak_num, Cas_p)
+    pltunfilt = plot(legend = false, xlabel = "Trials",
+        yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
+        title = "Unfiltered trial")
+        for r in eachrow(tt)
+            FLPDevelopment.session_plot!(pltunfilt, r)
+        end
+tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == streak_num, fCas_p)
+    pltfilt = plot(legend = false, xlabel = "Trials",
+        yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
+        title = "Filtered trial")
+        for r in eachrow(tt)
+            FLPDevelopment.session_plot!(pltfilt, r)
+        end
+plt = plot(
+    pltunfilt,
+    pltfilt,
+    layout = (2,1),
+    size=(620,874)
+    )
+savefig(plt,pathstring)
 ############## Poking time over trials
 gd = groupby(Cas_p,[:Virus,:MouseID, :Streak])
 df1 = combine(gd, :PokeDur => sum => :PokingTime, [:PokeIn,:PokeOut] => ((in,out) -> (out[end] - in[1])) => :TrialDuration)
@@ -158,58 +242,3 @@ gd2 = groupby(df2,:Virus)
 df3 = combine(gd2, :PokingInTrial_mean => mean => :PokingInTrial_groupmean,
     :PokingInTrial_mean => sem => :PokingInTrial_groupsem)
 open_html_table(df3)
-#########
-fCas_p = filter(r->r.PokeDur > 0.35 &&
-    (ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
-    (r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
-    Cas_p)
-gd = groupby(fCas_p,[:MouseID,:Session,:Virus])
-fCas_s = combine(gd) do dd
-    process_streaks(dd)
-end
-fpdf = group_frequency(fCas_s,:AfterLast, group = :Virus)
-# open_html_table(Cas_p)
-sort!(fpdf,:Xaxis)
-fpdf[isnan.(fpdf.Sem),:Sem] .= 0
-@df fpdf plot(:Xaxis, :Mean, ribbon = :Sem, group = :Virus,
-    linecolor = :auto, ylims=(0,0.4), xlims = (0,29))
-##
-pdf = group_frequency(Cas_s,:AfterLast, group = :Virus)
-sort!(pdf,:Xaxis)
-maximum(pdf.Xaxis)
-pdf[isnan.(pdf.Sem),:Sem] .= 0
-@df pdf plot(:Xaxis, :Mean, ribbon = :Sem, group = :Virus,
-    linecolor = :auto, ylims=(0,0.4), xlims = (0,29))
-##
-ALCas0 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak  + (1|MouseID)),fCas_s))
-ALCas1 = fit!(LinearMixedModel(@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),fCas_s))
-Likelyhood_Ratio_test(ALCas0,ALCas1)
-PALCas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),fCas_s,Poisson())
-PALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),fCas_s,Poisson())
-Likelyhood_Ratio_test(PALCas0,PALCas1)
-##
-# example biting CD17 minute x:xx
-tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == 99, Cas_p)
-plt = plot(legend = false, xlabel = "Trials",
-    yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800))
-    # xlims = (38,40), xticks = 0:0.2:300)
-    for r in eachrow(tt)
-        FLPDevelopment.session_plot!(plt, r)
-    end
-    plt
-savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-biting.pdf"))
-tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == 99, fCas_p)
-plt = plot(legend = false, xlabel = "Trials",
-    yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800))
-    # xlims = (38,40), xticks = 0:0.2:300)
-    for r in eachrow(tt)
-        FLPDevelopment.session_plot!(plt, r)
-    end
-    plt
-savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-bitingcleaned.pdf"))
-##
-check = filter(r -> 0 < !r.Reward && r.PokeDur <= 1, Cas_p)
-failures = FLPDevelopment.calculate_bin_duration(check,:PokeDur,:Virus; modality = :STEP, unit_step = 0.05)
-sort!(failures,[:Bin,:MouseID])
-groupdf = combine(groupby(failures,:Bin), :Count=> mean, :Count => sem)
-@df groupdf bar(:Bin, :Count_mean, yerror = :Count_sem)
