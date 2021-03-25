@@ -5,14 +5,14 @@ function summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothin
     if group == nothing
         m_res = individual_summary(df,xvar,yvar; summary = summary, err = err)
         gd = groupby(m_res,xvar)
-        res = combine(gd,yvar => mean => :Mean, yvar => sem => :Sem)
+        res = combine(gd,yvar => mean => :Mean, yvar => sem => :Sem, yvar => length => :n)
         return dropnan!(res)
     else
         gd1 = groupby(df,group)
         res = combine(gd1) do dd
             m_res = individual_summary(dd,xvar,yvar; summary = summary, err = err)
             gd2 = groupby(m_res,xvar)
-            combine(gd2,yvar => mean => :Mean, yvar => sem => :Sem)
+            combine(gd2,yvar => mean => :Mean, yvar => sem => :Sem, yvar => length => :n)
         end
         return dropnan!(res)
     end
@@ -108,13 +108,13 @@ function group_frequency(df,var; err = :MouseID, group = nothing)
     if isnothing(group)
         df = individual_frequency(df,var; err = err)
         gd = groupby(df,:Xaxis)
-        return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem)
+        return combine(gd, :Vals => mean => :Mean, :Vals => sem => :Sem, :Vals => length => :n)
     else
         gd1 = groupby(df, group)
         res = combine(gd1) do dd
             m_res = individual_frequency(dd,var; err = err)
             gd2 = groupby(m_res,:Xaxis)
-            combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem)
+            combine(gd2,:Vals => mean => :Mean, :Vals => sem => :Sem, :Vals => length => :n)
         end
     end
 end
@@ -339,6 +339,8 @@ end
 function overtrial_plot(df, grouping, var)
     #calculate mean of var for each mouse over a trial's bin
     dfSum = summary_xy(df,:BinnedStreak,var; summary = mean, err = :MouseID, group = grouping)
+    ## remove points with less than 3 datapoint
+    filter!(r -> r.n >= 3, dfSum)
     #plot mean over mice plus sem
     overtrialplot = @df dfSum plot(:BinnedStreak,:Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto,
         legend = :topright, ylabel = String(var), xlabel = "Trial")
@@ -610,4 +612,31 @@ function plot_bin_duration(df, group; variable = "undef", fontx = 11)
         push!(plots, plt)
     end
     return plots
+end
+
+function pokes_psth(In,Out)
+    start = Int64(minimum(In))
+    stop = Int64(maximum(Out))
+    vector = zeros(stop - start + 1)
+    for i in 1:length(Out)
+        vector[In[i] - start+1 : Out[i] - start + 1] .+= 1
+    end
+    vector ./ length(In)
+end
+
+function pokes_psth2(In,Out; bin_size = 1, normalised = false)
+    start = Int64(minimum(In))
+    stop = Int64(maximum(Out))
+    times = minimum(In):bin_size:maximum(Out)
+    vector = zeros(length(times))
+    for i in 1:length(Out)
+        Pin = Int64(round(In[i] / bin_size - start / bin_size)) +1
+        Pout = Int64(round(Out[i] / bin_size - start / bin_size)) +1
+        vector[Pin:Pout] .+= 1
+    end
+    if normalised
+        return (Time = collect(times), Psth = vector ./ length(In))
+    else
+        return (Time = collect(times), Psth = vector)
+    end
 end

@@ -11,7 +11,7 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
     r.MouseID != "CD09" && # biting, see B1_CD09_2020-07-13 minute30
     r.MouseID != "RJ58" && # blind
-    r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
+    # r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
     !(r.MouseID in first_females_group) &&
     r.ProtocolSession == 1
     # r.Performance > 25 && no need because minimum is 31
@@ -31,6 +31,22 @@ for df in (Cas_p, Cas_b, Cas_s)
 end
 agedf = filter(r -> r.Limit, Age_s)
 casdf = filter(r -> r.Limit, Cas_s)
+# fAge_p = filter(r->r.PokeDur > 0.3 &&
+#     (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
+#     (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
+#     Age_p)
+#     gd = groupby(fAge_p,[:MouseID,:Session,:Age,:Sex])
+#     agedf = combine(gd) do dd
+#         process_streaks(dd)
+#     end
+# fCas_p = filter(r->r.PokeDur > 0.3 &&
+#     (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
+#     (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
+#     Cas_p)
+#     gd = groupby(fCas_p,[:MouseID,:Session,:Virus])
+#     casdf = combine(gd) do dd
+#         process_streaks(dd)
+#     end
 agedf[!,:BinnedStreak] = bin_axis(agedf.Streak; unit_step = 5)
 casdf[!,:BinnedStreak] = bin_axis(casdf.Streak; unit_step = 5)
 nrow(agedf)/nrow(Age_s)
@@ -70,7 +86,6 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","
 
 #calculate mean cumulative of afterlas before leaving per mouse and group
 tt = FLPDevelopment.individual_cdf(agedf,:AfterLast)
-open_html_table(tt)
 cdfplot = FLPDevelopment.cdf_plot(agedf, :Age, :AfterLast; estimated = true)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeALCum.pdf"))
 
@@ -82,6 +97,13 @@ Likelyhood_Ratio_test(ALAge0,ALAge1)
 Likelyhood_Ratio_test(ALAge1,ALAge2)
 coef(ALAge1)
 PALAge0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),agedf,Poisson())
+PALAge1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Age + (1|MouseID)),agedf,Poisson())
+Likelyhood_Ratio_test(PALAge0,PALAge1)
+mm = ALAge1
+show(
+    DataFrame(Formula = mm.formula, modeldof = dof(mm), deviance = deviance(mm))
+)
+ccdf(Distributions.Chisq(3),8)
 ########################### Correct Plots ######################################
 FLPDevelopment.incorrect_fraction_scatter(agedf,:Age,:IncorrectLeave)[1]
 ylabel!("Mean probability of errors")
@@ -89,12 +111,11 @@ xlabel!("Group")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AgeERRScat.pdf"))
 
 check = filter(r -> r.CorrectStart, agedf)
-ILAge0 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak  + (1|MouseID)),check))
-ILAge1 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak + Age + (1|MouseID)),check))
-ILAge2 = fit!(LinearMixedModel(@formula(IncorrectLeave ~ 1 + Streak + Age + Sex + (1|MouseID)),check))
+ILAge0 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + (1|MouseID)),check,Bernoulli())
+ILAge1 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + Age + (1|MouseID)),check,Bernoulli())
+ILAge2 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + Age + Sex + (1|MouseID)),check,Bernoulli())
 Likelyhood_Ratio_test(ILAge0,ILAge1)
 Likelyhood_Ratio_test(ILAge1,ILAge2)
-
 ########################### Afterlast Plots ######################################
 #calculate mean of var for each mouse over a trial's bin
 overtrialplot = FLPDevelopment.overtrial_plot(casdf, :Virus, :AfterLast)

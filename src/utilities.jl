@@ -194,3 +194,28 @@ function summarydf(streak_df, pokes_df)
     :Perr,:RewxPoke,:RewxTrial]]
     return Summary_df
 end
+
+"""
+    `reallignpokes(rv,pv)`
+
+Using the reward vector, rv, and the poke_in vector of a trial
+return the poke_in time realligned to the last reward
+"""
+
+function reallignpokes(rv,pv)
+    s = findlast(rv)
+    if isnothing(s)
+        return pv
+    else
+        return pv .- pv[s]
+    end
+end
+
+function reallignpokes(df::DataFrames.AbstractDataFrame)
+    gd = groupby(df, [:MouseID,:Streak])
+    pokes = transform(gd, [:Reward,:PokeOut] => ((rv,pv) -> reallignpokes(rv,pv)) => :PO_LR)
+    pokes[!, :PI_LR] = pokes[:,:PO_LR] .- pokes[:,:PokeDur]
+    pokes[!,:PI_LR] = Int64.(round.(pokes[:,:PI_LR]))
+    pokes[!,:PO_LR] = Int64.(round.(pokes[:,:PO_LR]))
+    return pokes
+end

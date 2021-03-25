@@ -1,6 +1,16 @@
 function Likelyhood_Ratio_test(simple,full)
-    degrees = dof(full) - dof(simple)
-    ccdf(Distributions.Chisq(degrees), deviance(simple) - deviance(full))
+    χdegrees = dof(full) - dof(simple)
+    χ = deviance(simple) - deviance(full)
+    Pχ = ccdf(Distributions.Chisq(χdegrees), χ)
+    res = DataFrame(
+        Formula = [simple.formula, full.formula],
+        ModelDof = [dof(simple), dof(full)],
+        Deviance = [deviance(simple), deviance(full)],
+        Χ² = [nothing, χ],
+        Χ²Dof = [nothing, χdegrees],
+        PΧ = [nothing,Pχ])
+    rename!(res, [:ModelDof => Symbol("Model-dof"), :PΧ=> Symbol("P(>Χ²)")])
+    show(res)
 end
 
 function AIC_test(simple, full)

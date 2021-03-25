@@ -153,7 +153,7 @@ plot(
     size=(620,874)
     )
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","VirusSelectionDurations.pdf"))
-#########
+######### Filtering data
 fCas_p = filter(r->r.PokeDur > 0.3 &&
     (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
     (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
@@ -242,3 +242,154 @@ gd2 = groupby(df2,:Virus)
 df3 = combine(gd2, :PokingInTrial_mean => mean => :PokingInTrial_groupmean,
     :PokingInTrial_mean => sem => :PokingInTrial_groupsem)
 open_html_table(df3)
+############################### PSTH ########################
+
+pokes_age = reallignpokes(Age_p)
+@df filter(r -> r.PO_LR >= 0, pokes_age) ea_histogram(:PO_LR, bins = 20, xlims=(0,30))
+psth_age = FLPDevelopment.pokes_psth(pokes_age.PI_LR,pokes_age.PO_LR)
+bar(minimum(pokes_age.PI_LR):maximum(pokes_age.PO_LR) +1 ,psth_age,
+    linewidth =0, color = :black,
+    # xlims = (0,60),
+    xticks = 0:300:4500,
+    title = "Pokes PSTH Age-group",
+    label = "All animals",
+    xlabel = "Time from last reward poke out",
+    ylabel = "Events count")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTHAgepokesFull.pdf"))
+
+pokes_cas = reallignpokes(Cas_p)
+@df filter(r -> r.PO_LR >= 0, pokes_cas) ea_histogram(:PO_LR, bins = 20, xlims=(0,30))
+psth_cas = FLPDevelopment.pokes_psth(pokes_cas.PI_LR,pokes_cas.PO_LR)
+bar(minimum(pokes_cas.PI_LR):maximum(pokes_cas.PO_LR) +1 ,psth_cas,
+    linewidth =0, color = :black,
+    # xlims = (0,60),
+    xticks = 0:300:4500,
+    title = "Pokes PSTH Virus-group",
+    label = "All animals",
+    xlabel = "Time from last reward poke out",
+    ylabel = "Events count")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTHCaspokesFull.pdf"))
+####### psth per animal
+pokes_age = reallignpokes(Age_p)
+gd = groupby(pokes_age, [:MouseID,:Age])
+psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR), gd)
+for m in union(psth_cas.MouseID)
+    dd = filter(r -> r.MouseID == m, psth_cas)
+    g = dd[1,:Age]
+    plt = @df dd bar(:Time.+1, :Psth,
+        # xticks = 0:300:4500,
+        xaxis=(:log10,[1,:auto]),
+        linewidth =0,
+        color = g == "Juveniles" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Pokes PSTH Age-group",
+        label = m,
+        xlabel = "Time from last reward poke out",
+        ylabel = "Events count")
+        plt
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTH",m*".png"))
+end
+
+
+pokes_cas = reallignpokes(Cas_p)
+gd = groupby(pokes_cas, [:MouseID,:Virus])
+psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR), gd)
+for m in union(psth_cas.MouseID)
+    dd = filter(r -> r.MouseID == m, psth_cas)
+    g = dd[1,:Virus]
+    plt = @df dd bar(:Time.+1, :Psth,
+        # xticks = 0:300:4500,
+        xaxis=(:log10,[1,:auto]),
+        linewidth =0,
+        color = g == "Caspase" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Pokes PSTH Virus-group",
+        label = m,
+        xlabel = "Time from last reward poke out",
+        ylabel = "Events count")
+        plt
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTH",m*".png"))
+end
+
+
+####### psth per group
+pokes_age = reallignpokes(Age_p)
+gd = groupby(pokes_age, :Age)
+psth_age = combine(gd,
+    (:PI_LR,:PO_LR) => ((i,o) -> (FLPDevelopment.pokes_psth(i,o))) => :Psth,
+    (:PI_LR,:PO_LR) => ((i,o) -> (collect(Int64(minimum(i)):1:Int64(maximum(o))))) => :time)
+@df psth_age bar(:time, :Psth,
+    group = :Age,
+    xlims = (0,60),
+    xticks = 0:10:60,
+    linewidth =0, color = :auto,
+    fillalpha = 0.5,
+    title = "Pokes PSTH Age-group",
+    xlabel = "Time from last reward poke out",
+    ylabel = "Events count")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GroupPSTHAge.pdf"))
+
+pokes_cas = reallignpokes(Cas_p)
+@df pokes_cas histogram(:PO_LR.+1, xaxis=(:log10,[1,:auto]))
+gd = groupby(pokes_cas, :Virus)
+psth_cas = combine(gd,
+    (:PI_LR,:PO_LR) => ((i,o) -> (FLPDevelopment.pokes_psth(i,o))) => :Psth,
+    (:PI_LR,:PO_LR) => ((i,o) -> (collect(Int64(minimum(i)):1:Int64(maximum(o))))) => :time)
+@df psth_cas bar(:time.+ 1, :Psth,
+    group = :Virus,
+    # xlims = (0,60),
+    xaxis=(:log10,[1,:auto]),
+    xscale = :identity,
+    xticks = :auto,
+    linewidth = 0,
+    color = :auto,
+    fillalpha = 0.5,
+    title = "Pokes PSTH Virus-group",
+    xlabel = "Time from last reward poke out",
+    ylabel = "Events count")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GroupPSTHVirus.pdf"))
+
+######## psth different bin size
+pokes_cas = reallignpokes(Cas_p)
+gd = groupby(pokes_cas, :MouseID)
+psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR), gd)
+psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR; bin_size = 0.5), gd)
+psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR; bin_size = 2 ), gd)
+
+
+
+#=
+fit psth
+To fit the distribution a vector containing the time at which a poke was occurring.
+For pokes that spans multiple time bins (seconds in this case) the value of each
+bin has to be in the vector. To achieve that you need to collect from poke-in to
+poke-out.
+=#
+test = vcat([collect(r.PI_LR:r.PO_LR) for r in eachrow(pokes_age)]...)
+test = test[test .>= 0 .+ test.<=60] .+ 1
+Gfit_age = fit(Gamma,test)
+WMGfit_age = mixture_gamma_weighted(test)
+WMEfit_age = mixture_exp_weighted(test)
+WMEGfit_age = FLPDevelopment.mixture_gamma_exp_weighted(test)
+Paretofit_age = fit(Pareto,test)
+
+
+loglikelihood(Paretofit_age,test)
+loglikelihood(WMGfit_age,test)
+loglikelihood(WMEfit_age,test)
+loglikelihood(WMEGfit_age,test)
+loglikelihood(Gfit_age,test)
+
+check = pdf.(Gfit_age,1:61)
+check2 = pdf.(WMGfit_age,1:61)
+check3 = pdf.(WMEfit_age,1:61)
+check4 = pdf.(WMEGfit_age, 1:61)
+check5 = pdf.(Paretofit_age, 1:61)
+histogram(test)
+plot!(0:60, check, label = "Gamma_fit", linecolor = :red, linewidth = 3)
+plot!(0:60, check2, label = "Mixed Gamma_fit", linecolor = :cyan, linewidth = 3)
+plot!(0:60, check3, label = "Mixed Exp_fit", linecolor = :green, linewidth = 3)
+plot!(0:60, check3, label = "Mixed Gamma_Exp_fit", linecolor = :magenta, linewidth = 3)
+plot!(0:60, check3, label = "Pareto_fit", linecolor = :yellow, linewidth = 3)
+fit(Histogram,test)
+
+
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GammaPSTHAge.pdf"))
