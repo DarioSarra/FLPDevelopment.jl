@@ -147,6 +147,34 @@ Likelyhood_Ratio_test(ALCas0,ALCas1)
 PALCas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),casdf,Poisson())
 PALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),casdf,Poisson())
 Likelyhood_Ratio_test(PALCas0,PALCas1)
+wd = countmap(Cas_s.AfterLast)
+get(wd,5,0)
+Cas_s.Weights = [get(wd,x,0) for x in Cas_s.AfterLast]
+WALCas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + (1|MouseID)),Cas_s)
+WALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s)
+fm = @formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID))
+fm1 = fit(MixedModel, fm, Cas_s)
+StatsBase.leverage(fm1)
+
+Cas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s)
+mod = Cas0
+tune = 	4.685
+resid = residuals(mod)
+m = median(resid)
+MAD = @. median(abs(resid - m))
+s = MAD/0.6745
+h = MixedModels.leverage(mod)
+r = @. resid/(tune*s*sqrt(1-h))
+w = [(abs(rr)<1) ? (1 - rr.^2).^2 : 0.0 for rr in r]
+
+WALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s, wts = w)
+WALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s)
+
+
+
+WALCas1 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak + Virus + (1|MouseID)),Cas_s)
+Likelyhood_Ratio_test(WALCas0,WALCas1)
+
 ########################### Correct Plots ######################################
 FLPDevelopment.incorrect_fraction_scatter(casdf,:Virus,:IncorrectLeave)[2]
 ylabel!("Mean probability of errors")
