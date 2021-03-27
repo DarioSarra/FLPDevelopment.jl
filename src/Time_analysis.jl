@@ -272,13 +272,13 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTim
 ####### psth per animal
 pokes_age = reallignpokes(Age_p)
 gd = groupby(pokes_age, [:MouseID,:Age])
-psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR), gd)
-for m in union(psth_cas.MouseID)
-    dd = filter(r -> r.MouseID == m, psth_cas)
+psth_age = combine(x -> FLPDevelopment.pokes_psth(x.PI_LR,x.PO_LR; bin_size = 0.1), gd)
+for m in union(psth_age.MouseID)
+    dd = filter(r -> r.MouseID == m && r.Time >= 0.1, psth_age)
     g = dd[1,:Age]
-    plt = @df dd bar(:Time.+1, :Psth,
+    plt = @df dd bar(:Time, :Psth,
         # xticks = 0:300:4500,
-        xaxis=(:log10,[1,:auto]),
+        xaxis=(:log10,[0.1,:auto]),
         linewidth =0,
         color = g == "Juveniles" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
         title = "Pokes PSTH Age-group",
@@ -288,17 +288,17 @@ for m in union(psth_cas.MouseID)
         plt
     savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTH",m*".png"))
 end
-
+open_html_table(psth_age)
 
 pokes_cas = reallignpokes(Cas_p)
 gd = groupby(pokes_cas, [:MouseID,:Virus])
-psth_cas = combine(x -> FLPDevelopment.pokes_psth2(x.PI_LR,x.PO_LR), gd)
+psth_cas = combine(x -> FLPDevelopment.pokes_psth(x.PI_LR,x.PO_LR; bin_size = 0.1), gd)
 for m in union(psth_cas.MouseID)
-    dd = filter(r -> r.MouseID == m, psth_cas)
+    dd = filter(r -> r.MouseID == m && r.Time >= 0.1, psth_cas)
     g = dd[1,:Virus]
-    plt = @df dd bar(:Time.+1, :Psth,
+    plt = @df dd bar(:Time, :Psth,
         # xticks = 0:300:4500,
-        xaxis=(:log10,[1,:auto]),
+        xaxis=(:log10,[0.1,:auto]),
         linewidth =0,
         color = g == "Caspase" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
         title = "Pokes PSTH Virus-group",

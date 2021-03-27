@@ -614,17 +614,8 @@ function plot_bin_duration(df, group; variable = "undef", fontx = 11)
     return plots
 end
 
-function pokes_psth(In,Out)
-    start = Int64(minimum(In))
-    stop = Int64(maximum(Out))
-    vector = zeros(stop - start + 1)
-    for i in 1:length(Out)
-        vector[In[i] - start+1 : Out[i] - start + 1] .+= 1
-    end
-    vector ./ length(In)
-end
 
-function pokes_psth2(In,Out; bin_size = 1, normalised = false)
+function pokes_psth(In,Out; bin_size = 1, normalised = false)
     start = Int64(minimum(In))
     stop = Int64(maximum(Out))
     times = minimum(In):bin_size:maximum(Out)
