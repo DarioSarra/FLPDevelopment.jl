@@ -39,17 +39,118 @@ open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
 # duration of first poke
 # #fraction of poking time in a trial
 ####
+#### Time Log Transformed
+#### Poking after last reward
+pokes_age = reallignpokes(Age_p)
+filter!(r -> r.PO_LR > 0 && r.PI_LR > 0, pokes_age)
+transform!(pokes_age, :PI_LR => (x -> log10.(x)) => :Log_PI)
+transform!(pokes_age, :PO_LR => (x -> log10.(x)) => :Log_PO)
+gd = groupby(pokes_age, [:Age,:MouseID])
+psth_age = combine(x -> FLPDevelopment.pokes_psth(x.Log_PI,x.Log_PO; bin_size = 0.1), gd)
 
-FLPDevelopment.all_duration_analysis(Age_p, Age_s, :Age)[1]
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","AgeTrial.pdf"))
-FLPDevelopment.all_duration_analysis(Age_p, Age_s, :Age)[2]
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","AgePoke.pdf"))
+for m in union(psth_age.MouseID)
+    dd = filter(r -> r.MouseID == m, psth_age)
+    g = dd[1,:Age]
+    plt = @df dd bar(:Time, :Psth,
+        # xticks = (1:9:length(Bas),Bas[1:9:length(Bas)]),
+        # xaxis=(:log10,[0.1,:auto]),
+        linewidth =1,
+        color = g == "Adults" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Age-group",
+        label = m,
+        xlabel = "Time (logscale s)",
+        ylabel = "Events count")
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","LogTransformPSTH",m*".png"))
+end
 
-FLPDevelopment.all_duration_analysis(Cas_p, Cas_s, :Virus)[1]
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CasTrial.pdf"))
-FLPDevelopment.all_duration_analysis(Cas_p, Cas_s, :Virus)[2]
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CasPoke.pdf"))
 
+pokes_cas = reallignpokes(Cas_p)
+filter!(r -> r.PO_LR > 0 && r.PI_LR > 0, pokes_cas)
+transform!(pokes_cas, :PI_LR => (x -> log10.(x)) => :Log_PI)
+transform!(pokes_cas, :PO_LR => (x -> log10.(x)) => :Log_PO)
+gd = groupby(pokes_cas, [:Virus,:MouseID])
+psth_cas = combine(x -> FLPDevelopment.pokes_psth(x.Log_PI,x.Log_PO; bin_size = 0.1), gd)
+
+for m in union(psth_cas.MouseID)
+    dd = filter(r -> r.MouseID == m, psth_cas)
+    g = dd[1,:Virus]
+    plt = @df dd bar(:Time, :Psth,
+        # xticks = (1:9:length(Bas),Bas[1:9:length(Bas)]),
+        # xaxis=(:log10,[0.1,:auto]),
+        linewidth =1,
+        color = g == "Caspase" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Virus-group",
+        label = m,
+        xlabel = "Time (logscale s)",
+        ylabel = "Events count")
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","LogTransformPSTH",m*".png"))
+end
+### Log Interpoke
+pokes_age = reallignpokes(Age_p)
+filter!(r -> r.PO_LR > 0 && r.PI_LR > 0 &&
+    !ismissing(r.PostInterpoke), pokes_age)
+transform!(pokes_age, :PostInterpoke => (x -> round.(log10.(x), digits = 1)) => :Log_PostInterpoke)
+pokes_age[findall(pokes_age.Log_PostInterpoke .== 0),:Log_PostInterpoke] .= 0.0
+# open_html_table(sort(pokes_age,:Log_PostInterpoke))
+gd = groupby(pokes_age, [:Age,:MouseID, :Log_PostInterpoke])
+union(interpoke_age.Age)
+interpoke_age = combine(gd, nrow => :Count)
+
+for m in union(interpoke_age.MouseID)
+    dd = filter(r -> r.MouseID == m, interpoke_age)
+    g = dd[1,:Age]
+    sort!(dd,:Log_PostInterpoke)
+    plt = @df dd bar(:Log_PostInterpoke, :Count,
+        linewidth =1,
+        xlims = (-3,3),
+        color = g == "Juveniles" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Age-group",
+        label = m,
+        xlabel = "Interpoke duration (logscale s)",
+        ylabel = "Events count")
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","Interpoke",m*".png"))
+end
+
+pokes_cas = reallignpokes(Cas_p)
+filter!(r -> r.PO_LR > 0 && r.PI_LR > 0 &&
+    !ismissing(r.PostInterpoke), pokes_cas)
+transform!(pokes_cas, :PostInterpoke => (x -> round.(log10.(x), digits = 1)) => :Log_PostInterpoke)
+pokes_cas[findall(pokes_cas.Log_PostInterpoke .== 0),:Log_PostInterpoke] .= 0.0
+gd = groupby(pokes_cas, [:Virus,:MouseID, :Log_PostInterpoke])
+interpoke_cas = combine(gd, nrow => :Count)
+sort!(interpoke_cas,[:MouseID,:Log_PostInterpoke])
+union(interpoke_cas.Virus)
+for m in union(interpoke_cas.MouseID)
+    dd = filter(r -> r.MouseID == m, interpoke_cas)
+    g = dd[1,:Virus]
+    plt = @df dd bar(:Log_PostInterpoke, :Count,
+        linewidth =1,
+        xlims = (-3,3),
+        color = g == "Caspase" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Virus-group",
+        label = m,
+        xlabel = "Interpoke duration (logscale s)",
+        ylabel = "Events count")
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","Interpoke",m*".png"))
+end
+############ Interpoke group
+interpokegroup_age = combine(groupby(interpoke_age,[:Age,:MouseID]), :Log_PostInterpoke, :Count => (x -> x./sum(x)) => :Fraction)
+sort!(interpokegroup_age,[:Age,:MouseID, :Log_PostInterpoke])
+# open_html_table(interpokegroup_age)
+interpokegroup_age = combine(groupby(interpokegroup_age,[:Age,:Log_PostInterpoke]), :Fraction => mean, :Fraction => sem)
+sort!(interpokegroup_age,[:Age, :Log_PostInterpoke])
+# open_html_table(interpokegroup_age)
+filter!(r -> !isnan(r.Fraction_sem), interpokegroup_age)
+@df interpokegroup_age bar(:Log_PostInterpoke , :Fraction_mean, group = :Age, yerr = :Fraction_sem, alpha = 0.5)
+
+interpokegroup_cas = combine(groupby(interpoke_cas,[:Virus,:MouseID]), :Log_PostInterpoke, :Count => (x -> x./sum(x)) => :Fraction)
+sort!(interpokegroup_cas,[:Virus,:MouseID, :Log_PostInterpoke])
+# open_html_table(interpokegroup_cas)
+interpokegroup_cas = combine(groupby(interpokegroup_cas,[:Virus,:Log_PostInterpoke]), :Fraction => mean, :Fraction => sem)
+sort!(interpokegroup_cas,[:Virus, :Log_PostInterpoke])
+# open_html_table(interpokegroup_cas)
+filter!(r -> !isnan(r.Fraction_sem), interpokegroup_cas)
+@df interpokegroup_cas bar(:Log_PostInterpoke , :Fraction_mean, group = :Virus, yerr = :Fraction_sem, alpha = 0.5)
 ########################### Example Session Plots ######################################
 for m in union(Cas_p.MouseID)
     tt = filter(r -> r.MouseID == m, Cas_p)
@@ -62,8 +163,7 @@ for m in union(Cas_p.MouseID)
     title!(plt,m * " " * String(tt[1,:Virus]))
     savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime",m*".pdf"))
 end
-
-# example biting CD19 minute 3:25
+############ example biting CD19 minute 3:25
 tt = filter(r -> r.MouseID == "CD19" &&  r.Streak == 2, Cas_p)
 plt = plot(legend = false, xlabel = "Trials",
     yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
@@ -74,8 +174,52 @@ end
 plt
 savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD19-biting.pdf"))
 open_html_table(tt[:,[:PokeInStreak,:PokeDur,:PreInterpoke]])
-
 ##
+#= example biting CD17
+    trial 55 good clean minute x:xx
+    trial 99 bad clean minute xx:xx
+=#
+streak_num = 55
+if streak_num == 55
+    pathstring = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-GoodBiting.pdf")
+    plttitle = "Good filtering"
+elseif streak_num == 99
+    pathstring = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-BadBiting.pdf")
+    plttitle = "Bad filtering"
+end
+tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == streak_num, Cas_p)
+    pltunfilt = plot(legend = false, xlabel = "Trials",
+        yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
+        title = "Unfiltered trial")
+        for r in eachrow(tt)
+            FLPDevelopment.session_plot!(pltunfilt, r)
+        end
+tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == streak_num, fCas_p)
+    pltfilt = plot(legend = false, xlabel = "Trials",
+        yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
+        title = "Filtered trial")
+        for r in eachrow(tt)
+            FLPDevelopment.session_plot!(pltfilt, r)
+        end
+plt = plot(
+    pltunfilt,
+    pltfilt,
+    layout = (2,1),
+    size=(620,874)
+    )
+savefig(plt,pathstring)
+###
+FLPDevelopment.all_duration_analysis(Age_p, Age_s, :Age)[1]
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","AgeTrial.pdf"))
+FLPDevelopment.all_duration_analysis(Age_p, Age_s, :Age)[2]
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","AgePoke.pdf"))
+FLPDevelopment.all_duration_analysis(Cas_p, Cas_s, :Virus)[1]
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CasTrial.pdf"))
+FLPDevelopment.all_duration_analysis(Cas_p, Cas_s, :Virus)[2]
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CasPoke.pdf"))
+
+
+#############
 gd = groupby(Cas_s,[:MouseID,:Limit])
 df1 = combine(gd, :AfterLast => maximum => :Max_AfterLast, :AfterLast => length => :Trials)
 df1 = combine(gd, :AfterLast => (x-> (union(x),)) => :Max_AfterLast, :AfterLast => length => :Trials)
@@ -195,40 +339,7 @@ Likelyhood_Ratio_test(PALCas0,PALCas1)
 BCorrCas0 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + (1|MouseID)),fCas_s,Bernoulli())
 BCorrCas1 = fit(MixedModel,@formula(CorrectLeave ~ 1 + Streak + Virus + (1|MouseID)),fCas_s,Bernoulli())
 Likelyhood_Ratio_test(BCorrCas0,BCorrCas1)
-##
-#= example biting CD17
-    trial 55 good clean minute x:xx
-    trial 99 bad clean minute xx:xx
-=#
-streak_num = 55
-if streak_num == 55
-    pathstring = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-GoodBiting.pdf")
-    plttitle = "Good filtering"
-elseif streak_num == 99
-    pathstring = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","CD17-BadBiting.pdf")
-    plttitle = "Bad filtering"
-end
-tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == streak_num, Cas_p)
-    pltunfilt = plot(legend = false, xlabel = "Trials",
-        yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
-        title = "Unfiltered trial")
-        for r in eachrow(tt)
-            FLPDevelopment.session_plot!(pltunfilt, r)
-        end
-tt = filter(r -> r.MouseID == "CD17" &&  r.Streak == streak_num, fCas_p)
-    pltfilt = plot(legend = false, xlabel = "Trials",
-        yaxis = false, yticks = false, ylabel = "Time (seconds)",size=(800,800),
-        title = "Filtered trial")
-        for r in eachrow(tt)
-            FLPDevelopment.session_plot!(pltfilt, r)
-        end
-plt = plot(
-    pltunfilt,
-    pltfilt,
-    layout = (2,1),
-    size=(620,874)
-    )
-savefig(plt,pathstring)
+
 ############## Poking time over trials
 gd = groupby(Cas_p,[:Virus,:MouseID, :Streak])
 df1 = combine(gd, :PokeDur => sum => :PokingTime, [:PokeIn,:PokeOut] => ((in,out) -> (out[end] - in[1])) => :TrialDuration)
@@ -243,42 +354,36 @@ df3 = combine(gd2, :PokingInTrial_mean => mean => :PokingInTrial_groupmean,
     :PokingInTrial_mean => sem => :PokingInTrial_groupsem)
 open_html_table(df3)
 ############################### PSTH ########################
-
-pokes_age = reallignpokes(Age_p)
-@df filter(r -> r.PO_LR >= 0, pokes_age) ea_histogram(:PO_LR, bins = 20, xlims=(0,30))
-psth_age = FLPDevelopment.pokes_psth(pokes_age.PI_LR,pokes_age.PO_LR)
-bar(minimum(pokes_age.PI_LR):maximum(pokes_age.PO_LR) +1 ,psth_age,
-    linewidth =0, color = :black,
-    # xlims = (0,60),
-    xticks = 0:300:4500,
-    title = "Pokes PSTH Age-group",
-    label = "All animals",
-    xlabel = "Time from last reward poke out",
-    ylabel = "Events count")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTHAgepokesFull.pdf"))
-
-pokes_cas = reallignpokes(Cas_p)
-@df filter(r -> r.PO_LR >= 0, pokes_cas) ea_histogram(:PO_LR, bins = 20, xlims=(0,30))
-psth_cas = FLPDevelopment.pokes_psth(pokes_cas.PI_LR,pokes_cas.PO_LR)
-bar(minimum(pokes_cas.PI_LR):maximum(pokes_cas.PO_LR) +1 ,psth_cas,
-    linewidth =0, color = :black,
-    # xlims = (0,60),
-    xticks = 0:300:4500,
-    title = "Pokes PSTH Virus-group",
-    label = "All animals",
-    xlabel = "Time from last reward poke out",
-    ylabel = "Events count")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTHCaspokesFull.pdf"))
 ####### psth per animal
+Ex = -1.0:4.0
+Un = 1:9
+Bas = []
+for ex in Ex
+    for u in Un
+        push!(Bas, (10^ex) * u)
+    end
+end
+Bas = round.(Bas, digits = 1)
+
 pokes_age = reallignpokes(Age_p)
+pa = pokes_age[:,[:MouseID,:Age,:Sex,:Poke,:PokeInStreak,:Streak,:Side,:SideHigh,:Reward,:PokeIn,:PokeOut]]
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","NPSTH","PokesAge.csv"), pa)
+
 gd = groupby(pokes_age, [:MouseID,:Age])
 psth_age = combine(x -> FLPDevelopment.pokes_psth(x.PI_LR,x.PO_LR; bin_size = 0.1), gd)
-for m in union(psth_age.MouseID)
-    dd = filter(r -> r.MouseID == m && r.Time >= 0.1, psth_age)
+filter!(r -> r.Time >= 0.1, psth_age)
+transform!(psth_age, :Time => (x -> [Bas[findfirst(xx .<= Bas)] for xx in x]) => :Log_Time)
+transform!(psth_age, :Log_Time => (x -> [findfirst(xx .== Bas) for xx in x]) => :Xpos)
+
+
+log_age = combine(groupby(psth_age,[:MouseID,:Log_Time,:Xpos,:Age]), :Psth => sum => :Psth)
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","NPSTH","AgeGroup.csv"), log_age)
+for m in union(log_age.MouseID)
+    dd = filter(r -> r.MouseID == m, log_age)
     g = dd[1,:Age]
-    plt = @df dd bar(:Time, :Psth,
-        # xticks = 0:300:4500,
-        xaxis=(:log10,[0.1,:auto]),
+    plt = @df dd bar(:Xpos, :Psth,
+        xticks = (1:9:nrow(dd),:Log_Time[1:9:nrow(dd)]),
+        # xaxis=(:log10,[0.1,:auto]),
         linewidth =0,
         color = g == "Juveniles" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
         title = "Pokes PSTH Age-group",
@@ -286,19 +391,26 @@ for m in union(psth_age.MouseID)
         xlabel = "Time from last reward poke out",
         ylabel = "Events count")
         plt
-    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTH",m*".png"))
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","NPSTH",m*".png"))
 end
-open_html_table(psth_age)
 
 pokes_cas = reallignpokes(Cas_p)
+pv = pokes_cas[:,[:MouseID,:Virus,:Sex,:Poke,:PokeInStreak,:Streak,:Side,:SideHigh,:Reward,:PokeIn,:PokeOut]]
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","NPSTH","PokesVirus.csv"), pv)
+
 gd = groupby(pokes_cas, [:MouseID,:Virus])
 psth_cas = combine(x -> FLPDevelopment.pokes_psth(x.PI_LR,x.PO_LR; bin_size = 0.1), gd)
-for m in union(psth_cas.MouseID)
-    dd = filter(r -> r.MouseID == m && r.Time >= 0.1, psth_cas)
+filter!(r -> r.Time >= 0.1, psth_cas)
+transform!(psth_cas, :Time => (x -> [Bas[findfirst(xx .<= Bas)] for xx in x]) => :Log_Time)
+transform!(psth_cas, :Log_Time => (x -> [findfirst(xx .== Bas) for xx in x]) => :Xpos)
+log_cas = combine(groupby(psth_cas,[:MouseID,:Log_Time,:Xpos,:Virus]), :Psth => sum => :Psth)
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","NPSTH","VirusGroup.csv"), log_cas)
+for m in union(log_cas.MouseID)
+    dd = filter(r -> r.MouseID == m, log_cas)
     g = dd[1,:Virus]
-    plt = @df dd bar(:Time, :Psth,
-        # xticks = 0:300:4500,
-        xaxis=(:log10,[0.1,:auto]),
+    plt = @df dd bar(:Xpos, :Psth,
+        xticks = (1:9:nrow(dd),:Log_Time[1:9:nrow(dd)]),
+        # xaxis=(:log10,[0.1,:auto]),
         linewidth =0,
         color = g == "Caspase" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
         title = "Pokes PSTH Virus-group",
@@ -306,46 +418,82 @@ for m in union(psth_cas.MouseID)
         xlabel = "Time from last reward poke out",
         ylabel = "Events count")
         plt
-    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","PSTH",m*".png"))
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","NPSTH",m*".png"))
 end
 
 
 ####### psth per group
+#realling pokes' time from last reward
 pokes_age = reallignpokes(Age_p)
-gd = groupby(pokes_age, :Age)
-psth_age = combine(gd,
-    (:PI_LR,:PO_LR) => ((i,o) -> (FLPDevelopment.pokes_psth(i,o))) => :Psth,
-    (:PI_LR,:PO_LR) => ((i,o) -> (collect(Int64(minimum(i)):1:Int64(maximum(o))))) => :time)
-@df psth_age bar(:time, :Psth,
+#counts how many pokes falls in time bins defined by bin_size, per mouse and group
+gd = groupby(pokes_age, [:Age,:MouseID])
+psth_age = combine(x -> FLPDevelopment.pokes_psth(x.PI_LR,x.PO_LR; bin_size = 0.1), gd)
+# remove events before the last reward
+filter!(r -> r.Time >= 0.1, psth_age)
+# #calculate 95% cumulative value
+# cdf_age = combine(groupby(psth_age,:Time), :Psth => (x -> sum(x)) => :Psth_sum)
+# #remove all time bbins without pokes before accumulating counting
+# filter!(r-> r.Psth_sum !=0, cdf_age)
+# transform!(cdf_age, :Psth_sum => (x -> accumulate(+,x)) => :accumulate)
+# transform!(cdf_age, :accumulate => (x -> x./maximum(x)) => :cdf)
+# open_html_table(cdf_age)
+# tresh_age = cdf_age[findfirst(cdf_age.cdf .>= 0.95), :Time]
+# normalise event counts per animal
+transform!(groupby(psth_age,:MouseID), :Psth => (x -> x./sum(x)) => :Psth)
+# average the normalised bin count per group
+gd2 = groupby(psth_age, [:Age, :Time])
+psth_age_g = combine(:Psth => (x -> (mean_Psth = mean(x), sem_Psth = sem(x))), gd2)
+#removes single count cases
+# filter!(r -> !isnan(r.sem_Psth), psth_age_g)
+@df psth_age_g bar(:Time, :mean_Psth,
+    # yerror = :sem_Psth,
+    linewidth =0,
+    # ribbon = :sem_Psth, linecolor = :auto,
+    xaxis=(:log10,[0.1,:auto]),
     group = :Age,
-    xlims = (0,60),
-    xticks = 0:10:60,
-    linewidth =0, color = :auto,
-    fillalpha = 0.5,
+    color = :auto,
+    fillalpha = 0.4,
     title = "Pokes PSTH Age-group",
     xlabel = "Time from last reward poke out",
     ylabel = "Events count")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GroupPSTHAge.pdf"))
+# vline!([tresh_age])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GroupPSTHAge.png"))
 
+#realling pokes' time from last reward
 pokes_cas = reallignpokes(Cas_p)
-@df pokes_cas histogram(:PO_LR.+1, xaxis=(:log10,[1,:auto]))
-gd = groupby(pokes_cas, :Virus)
-psth_cas = combine(gd,
-    (:PI_LR,:PO_LR) => ((i,o) -> (FLPDevelopment.pokes_psth(i,o))) => :Psth,
-    (:PI_LR,:PO_LR) => ((i,o) -> (collect(Int64(minimum(i)):1:Int64(maximum(o))))) => :time)
-@df psth_cas bar(:time.+ 1, :Psth,
+#counts how many pokes falls in time bins defined by bin_size, per mouse and group
+gd = groupby(pokes_cas, [:Virus,:MouseID])
+psth_cas = combine(x -> FLPDevelopment.pokes_psth(x.PI_LR,x.PO_LR; bin_size = 0.1), gd)
+# remove events before the last reward
+filter!(r -> r.Time >= 0.1, psth_cas)
+# #calculate 95% cumulative value
+# cdf_age = combine(groupby(psth_cas,:Time), :Psth => (x -> sum(x)) => :Psth_sum)
+# #remove all time bbins without pokes before accumulating counting
+# filter!(r-> r.Psth_sum !=0, cdf_age)
+# transform!(cdf_age, :Psth_sum => (x -> accumulate(+,x)) => :accumulate)
+# transform!(cdf_age, :accumulate => (x -> x./maximum(x)) => :cdf)
+# open_html_table(cdf_age)
+# tresh_age = cdf_age[findfirst(cdf_age.cdf .>= 0.95), :Time]
+# normalise event counts per animal
+transform!(groupby(psth_cas,:MouseID), :Psth => (x -> x./sum(x)) => :Psth)
+# average the normalised bin count per group
+gd2 = groupby(psth_cas, [:Virus, :Time])
+psth_cas_g = combine(:Psth => (x -> (mean_Psth = mean(x), sem_Psth = sem(x))), gd2)
+#removes single count cases
+# filter!(r -> !isnan(r.sem_Psth), psth_cas_g)
+@df psth_cas_g bar(:Time, :mean_Psth,
+    # yerror = :sem_Psth,
+    linewidth =0,
+    # ribbon = :sem_Psth, linecolor = :auto,
+    xaxis=(:log10,[0.1,:auto]),
     group = :Virus,
-    # xlims = (0,60),
-    xaxis=(:log10,[1,:auto]),
-    xscale = :identity,
-    xticks = :auto,
-    linewidth = 0,
     color = :auto,
-    fillalpha = 0.5,
+    fillalpha = 0.4,
     title = "Pokes PSTH Virus-group",
     xlabel = "Time from last reward poke out",
     ylabel = "Events count")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GroupPSTHVirus.pdf"))
+# vline!([tresh_age])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GroupPSTHVirus.png"))
 
 ######## psth different bin size
 pokes_cas = reallignpokes(Cas_p)
@@ -393,3 +541,44 @@ fit(Histogram,test)
 
 
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","GammaPSTHAge.pdf"))
+###### Interpoke
+
+pokes_cas = reallignpokes(Cas_p)
+pokes_cas = pokes_cas[:,[:MouseID,:Virus,:Sex,:Poke,:PokeInStreak,:Streak,:Side,:SideHigh,:Reward,
+    :PI_LR,:PO_LR,:PreInterpoke,:PostInterpoke]]
+filter!(r -> r.PO_LR > 0 &&
+        !ismissing(r.PostInterpoke),
+        pokes_cas)
+pokes_cas[!,:PostInterpoke] = round.(pokes_cas[!,:PostInterpoke], digits  = 1)
+Ex = -1.0:4.0
+Un = 1:9
+Bas = []
+for ex in Ex
+    for u in Un
+        push!(Bas, (10^ex) * u)
+    end
+end
+Bas = round.(Bas, digits = 1)
+transform!(pokes_cas, :PostInterpoke => (x -> [findfirst(xx .<= Bas) for xx in x]) => :Xpos)
+transform!(pokes_cas, :PostInterpoke => (x -> [Bas[findfirst(xx .<= Bas)] for xx in x]) => :Log_Interpoke)
+open_html_table(pokes_cas)
+gd = groupby(pokes_cas, [:MouseID, :Virus, :Xpos, :Log_Interpoke])
+hist_cas = combine(gd, nrow => :Count)
+for m in union(hist_cas.MouseID)
+    dd = filter( r -> r.MouseID == m, hist_cas)
+    sort!(dd,[:Xpos])
+    g = dd[1,:Virus]
+    plt = @df dd bar(:Xpos, :Count,
+        xticks = (1:9:length(Bas),Bas[1:9:length(Bas)]),
+        # xaxis=(:log10,[0.1,:auto]),
+        linewidth =1,
+        color = g == "Caspase" ? get_color_palette(:auto,plot_color(:white))[2] : get_color_palette(:auto,plot_color(:white))[1],
+        title = "Interpoke Duration Virus-group",
+        label = m,
+        xlabel = "Interpoke Interval (logscale s)",
+        ylabel = "Events count")
+    savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","Interpoke",m*".png"))
+end
+
+dd = filter( r -> r.MouseID == "CD02", hist_cas)
+open_html_table(dd)

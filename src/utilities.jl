@@ -215,7 +215,9 @@ function reallignpokes(df::DataFrames.AbstractDataFrame)
     gd = groupby(df, [:MouseID,:Streak])
     pokes = transform(gd, [:Reward,:PokeOut] => ((rv,pv) -> reallignpokes(rv,pv)) => :PO_LR)
     pokes[!, :PI_LR] = pokes[:,:PO_LR] .- pokes[:,:PokeDur]
-    pokes[!,:PI_LR] = Int64.(round.(pokes[:,:PI_LR]))
-    pokes[!,:PO_LR] = Int64.(round.(pokes[:,:PO_LR]))
+    # pokes[!,:PI_LR] = Int64.(round.(pokes[:,:PI_LR]))
+    # pokes[!,:PO_LR] = Int64.(round.(pokes[:,:PO_LR]))
+    pokes[!,:PI_LR] = pokes[:,:PI_LR]
+    pokes[!,:PO_LR] = pokes[:,:PO_LR]
     return pokes
 end

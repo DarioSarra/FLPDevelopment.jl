@@ -615,19 +615,19 @@ function plot_bin_duration(df, group; variable = "undef", fontx = 11)
 end
 
 
-function pokes_psth(In,Out; bin_size = 1, normalised = false)
-    start = Int64(minimum(In))
-    stop = Int64(maximum(Out))
-    times = minimum(In):bin_size:maximum(Out)
+function pokes_psth(In,Out; bin_size = 1)
+    start =floor(minimum(In))
+    stop = ceil(maximum(Out)) + bin_size
+    times = start:bin_size:stop
     vector = zeros(length(times))
     for i in 1:length(Out)
-        Pin = Int64(round(In[i] / bin_size - start / bin_size)) +1
-        Pout = Int64(round(Out[i] / bin_size - start / bin_size)) +1
-        vector[Pin:Pout] .+= 1
+        Pin = findfirst(times .>= In[i]) #Int64(round(In[i] / bin_size - start / bin_size)) +1
+        Pout = findfirst(times .>= Out[i]) #Int64(round(Out[i] / bin_size - start / bin_size)) +1
+        if any(isnothing.([Pin,Pout]))
+            println("Start = $start, Stop = $stop, Pin = $(In[i]), Pout = $(Out[i])")
+        else
+            vector[Pin:Pout] .+= 1
+        end
     end
-    if normalised
-        return (Time = collect(times), Psth = vector ./ length(In))
-    else
-        return (Time = collect(times), Psth = vector)
-    end
+    return (Time = collect(times), Psth = vector)
 end
