@@ -134,21 +134,32 @@ for m in union(interpoke_cas.MouseID)
     savefig(plt,joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime","Interpoke",m*".png"))
 end
 ############ Interpoke group
+pokes_age = reallignpokes(Age_p)
+filter!(r -> r.PO_LR > 0 && r.PI_LR > 0 &&
+    !ismissing(r.PostInterpoke), pokes_age)
+transform!(pokes_age, :PostInterpoke => (x -> round.(log10.(x), digits = 1)) => :Log_PostInterpoke)
+pokes_age[findall(pokes_age.Log_PostInterpoke .== 0),:Log_PostInterpoke] .= 0.0
+gd = groupby(pokes_age, [:Age,:MouseID, :Log_PostInterpoke])
+interpoke_age = combine(gd, nrow => :Count)
 interpokegroup_age = combine(groupby(interpoke_age,[:Age,:MouseID]), :Log_PostInterpoke, :Count => (x -> x./sum(x)) => :Fraction)
 sort!(interpokegroup_age,[:Age,:MouseID, :Log_PostInterpoke])
-# open_html_table(interpokegroup_age)
 interpokegroup_age = combine(groupby(interpokegroup_age,[:Age,:Log_PostInterpoke]), :Fraction => mean, :Fraction => sem)
 sort!(interpokegroup_age,[:Age, :Log_PostInterpoke])
-# open_html_table(interpokegroup_age)
 filter!(r -> !isnan(r.Fraction_sem), interpokegroup_age)
 @df interpokegroup_age bar(:Log_PostInterpoke , :Fraction_mean, group = :Age, yerr = :Fraction_sem, alpha = 0.5)
 
+pokes_cas = reallignpokes(Cas_p)
+filter!(r -> r.PO_LR > 0 && r.PI_LR > 0 &&
+    !ismissing(r.PostInterpoke), pokes_cas)
+transform!(pokes_cas, :PostInterpoke => (x -> round.(log10.(x), digits = 1)) => :Log_PostInterpoke)
+pokes_cas[findall(pokes_cas.Log_PostInterpoke .== 0),:Log_PostInterpoke] .= 0.0
+gd = groupby(pokes_cas, [:Virus,:MouseID, :Log_PostInterpoke])
+interpoke_cas = combine(gd, nrow => :Count)
+sort!(interpoke_cas,[:MouseID,:Log_PostInterpoke])
 interpokegroup_cas = combine(groupby(interpoke_cas,[:Virus,:MouseID]), :Log_PostInterpoke, :Count => (x -> x./sum(x)) => :Fraction)
 sort!(interpokegroup_cas,[:Virus,:MouseID, :Log_PostInterpoke])
-# open_html_table(interpokegroup_cas)
 interpokegroup_cas = combine(groupby(interpokegroup_cas,[:Virus,:Log_PostInterpoke]), :Fraction => mean, :Fraction => sem)
 sort!(interpokegroup_cas,[:Virus, :Log_PostInterpoke])
-# open_html_table(interpokegroup_cas)
 filter!(r -> !isnan(r.Fraction_sem), interpokegroup_cas)
 @df interpokegroup_cas bar(:Log_PostInterpoke , :Fraction_mean, group = :Virus, yerr = :Fraction_sem, alpha = 0.5)
 ########################### Example Session Plots ######################################

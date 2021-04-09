@@ -155,7 +155,7 @@ end
 function joinfilter(df_s,df_p,var, value)
     # filter streak according to the value
     f_df_s = filter(var => x -> x <= value, df_s)
-    # use column MouseID and Streak to select from the PokesDatafraim
+    # use column MouseID and Streak to select from the PokesDataframe
     f_df_p = leftjoin(f_df_s[:,[:MouseID, :Streak]],df_p,on = [:MouseID, :Streak])
     dropmissing!(f_df_p,:PreInterpoke, disallowmissing = true)
     filter!(r -> 0 < r.PreInterpoke, f_df_p)
@@ -220,4 +220,101 @@ function reallignpokes(df::DataFrames.AbstractDataFrame)
     pokes[!,:PI_LR] = pokes[:,:PI_LR]
     pokes[!,:PO_LR] = pokes[:,:PO_LR]
     return pokes
+end
+
+"""
+    `rm_interpokes(session, shortlimit = 0.06, longlimit = 7)`
+
+merge pokes separated by an interpoke interval shorter than shortimit
+remove from the streak pokes that occures after an interpoke interval longer than longlimit
+"""
+function rm_shortinterpoke(trial::DataFrames.AbstractDataFrame; limit = 0.06)
+    group_var = :Age in propertynames(trial) ? :Age : :Virus
+    Same_vals = [:Session, :Streak, :Side, :Day, :MouseID, :Gen,
+            :ExpSession, :ProtocolSession, group_var, :Sex, :Performance]
+    PreviousPoke_vals = [:Poke, :SideHigh, :PokeHierarchy, :PokeIn, :PreInterpoke, :PokeNum, :PokeInStreak, :In]
+    NextPoke_vals = [:Bout, :Leave, :PokeOut, :PostInterpoke, :Out]
+    # find the index of interpokes shorter than 50ms.
+    # It skips missing values because they are the last poke in a trial, therefore lacking a PostInterpoke value
+    shortcases = findall((trial.PostInterpoke .< limit) .& (.!collect((ismissing.(trial.PostInterpoke)))))
+    if length(shortcases) == 0
+        return trial
+    else
+        for i in shortcases
+            # println("Size = $(nrow(trial)), case = $i, Poke = $(trial[i,:Poke]), Session = $(trial[i,:Session])")
+            check = mapcols(x -> x[1] == x[2], trial[i:i+1,Same_vals])
+            if !all(check[1,:])
+                # checks that the column that shouldn't change have the same value in the ith and ith+1 case
+                error("some supposedely fixed values are dufferent")
+            end
+            # replace values in the ith case to values of the i+1 case in columns that need to be extended to the second poke
+            trial[i,NextPoke_vals] = trial[i+1,NextPoke_vals]
+            # assign reward true if any of the ith and ith+1 case was rewarded
+            trial[i,:Reward] = any(trial[i:i+1,:Reward])
+            # recalculate values
+            trial[i,:PokeDur] = trial[i+1,:PokeOut] - trial[i,:PokeIn]
+            trial[i+1,[:PokeIn,:PokeOut]] .= NaN
+        end
+        trial = filter(r -> !isnan(r.PokeIn), trial)
+        trial[:,:PokeInStreak] = collect(1:nrow(trial))
+        return trial
+    end
+end
+
+function rm_longinterpoke(dd::DataFrames.AbstractDataFrame; limit = 7)
+    longcase = findfirst((dd.PostInterpoke .> limit) .& (.!collect((ismissing.(dd.PostInterpoke)))))
+    if isnothing(longcase)
+        return dd
+    else
+        # println("Size = $(nrow(dd)), case = $longcase, Poke = $(dd[longcase,:Poke])")
+        dd = dd[1:longcase,:]
+        dd[end,:PostInterpoke] = missing
+        return dd
+    end
+end
+
+function rm_interpokes(session::DataFrames.AbstractDataFrame; shortlimit = 0.06, longlimit = 7)
+    res3 = combine(groupby(session,:Streak)) do dd
+        res1 = rm_shortinterpoke(dd; limit = shortlimit)
+        res2 = rm_longinterpoke(res1; limit = longlimit)
+    end
+    transform!(res3,:Poke => (x -> collect(1:length(x))) => :Poke)
+end
+
+
+"""
+    process_filtered_streak(df::AbstractDataFrame, var::Symbol, val <:Number)
+
+filter a pokes dataframe to chop trials according to the first encountered value val in column var
+return a streak dataframe from the chopped pokes dataframe
+"""
+function reprocess_streaks(pokes_df::AbstractDataFrame)
+    gd = groupby(pokes_df,:MouseID)
+    streak_df = combine(gd) do dd
+        prov = DataFrame(FLPprocess.process_streaks(dd))
+        prov[!,:Gen] .= dd[1,:Gen]
+        return prov
+    end
+    if in(:Age,propertynames(pokes_df))
+        streak_df[!,:Age] = [x in dario_youngs ? "Juveniles" : "Adults" for x in streak_df.MouseID]
+    elseif in(:Virus,propertynames(pokes_df))
+        streak_df[!,:Virus] = [get(VirusDict,x,"Missing") for x in streak_df.MouseID]
+    end
+    streak_df[!,:Sex] = [x in females ? "F" : "M" for x in streak_df.MouseID]
+    streak_df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in streak_df.PreInterpoke]
+    gd = groupby(streak_df,:MouseID)
+    transform!(gd, :Streak => maximum => :Performance)
+    Afreq = countmap(streak_df.AfterLast)
+    Aprob = Dict()
+    for (a,f) in Afreq
+        Aprob[a] = round(f/nrow(streak_df),digits = 5)
+    end
+    streak_df[!,:IncorrectStart] = [!x for x in streak_df.CorrectStart]
+    streak_df[!,:IncorrectLeave] = [!x for x in streak_df.CorrectLeave]
+    streak_df[!,:P_AfterLast] = [Aprob[a] for a in streak_df.AfterLast]
+    gd = groupby(streak_df,:MouseID)
+    transform!(gd, :AfterLast => frequency)
+    transform!(gd, :Num_Rewards => cumsum => :Cum_Rewards)
+    streak_df[!,:RewRate] = streak_df.Cum_Rewards ./ streak_df.Stop
+    return streak_df
 end
