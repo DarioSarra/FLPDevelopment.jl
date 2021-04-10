@@ -41,29 +41,29 @@ open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
 # by mouse mean P of leave per bin
 # mean group + sem per animal
 ############### Leaving Model
-# zscore full dataset all variable
-# logscale poke Out before model?
+               ################ Virus
+
 Cas_p.LogOut = log10.(Cas_p.Out)
 transform!(Cas_p, [:Streak, :Out, :LogOut] .=> zscore)
 transform!(Cas_s, :Streak .=> zscore)
 
 #Compare AfterLast model
-verbagg00 = @formula(Leave ~ 1 + Streak_zscore + Out_zscore + (1|MouseID));
-LeaveCas00 = fit(MixedModel,verbagg00, Cas_p, Bernoulli())
-verbagg0 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + (1|MouseID));
-LeaveCas0 = fit(MixedModel,verbagg0, Cas_p, Bernoulli())
+verbCas00 = @formula(Leave ~ 1 + Streak_zscore + Out_zscore + (1|MouseID));
+LeaveCas00 = fit(MixedModel,verbCas00, Cas_p, Bernoulli())
+verbCas0 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + (1|MouseID));
+LeaveCas0 = fit(MixedModel,verbCas0, Cas_p, Bernoulli())
 AlCas0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak_zscore + (1|MouseID)),Cas_s)
 AIC_test(AlCas0, LeaveCas0)
 AIC_test(LeaveCas00, LeaveCas0)
 
-verbagg1 = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Virus +  (1|MouseID));
-verbagg2 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore * Virus +  (1|MouseID));
-verbagg3 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Virus + (1|MouseID));
+verbCas1 = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Virus +  (1|MouseID));
+verbCas2 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore * Virus +  (1|MouseID));
+verbCas3 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Virus + (1|MouseID));
 
 # Group Effect
-LeaveCas1 = fit(MixedModel,verbagg1, Cas_p, Bernoulli())
-LeaveCas2 = fit(MixedModel,verbagg2, Cas_p, Bernoulli())
-LeaveCas3 = fit(MixedModel,verbagg3, Cas_p, Bernoulli())
+LeaveCas1 = fit(MixedModel,verbCas1, Cas_p, Bernoulli())
+LeaveCas2 = fit(MixedModel,verbCas2, Cas_p, Bernoulli())
+LeaveCas3 = fit(MixedModel,verbCas3, Cas_p, Bernoulli())
 
 
 MixedModels.likelihoodratiotest(LeaveCas0,LeaveCas1)
@@ -73,149 +73,124 @@ MixedModels.likelihoodratiotest(LeaveCas0,LeaveCas3)
 Cas_p.M1_Leave = predict(LeaveCas1)
 Cas_p.M2_Leave = predict(LeaveCas2)
 Cas_p.M3_Leave = predict(LeaveCas3)
-#### Row data P leaving
-transform!(Cas_p, :Out => (x -> bin_axis(x; unit_step = 10)) => :Bin_Out)
-df0 = filter(r -> r.Streak <= 50, Cas_p)
-vars = [:Leave, :M1_Leave, :M2_Leave]
-df1 = combine(groupby(df0,[:MouseID,:Bin_Out,:Virus]),
-    vars .=> mean .=> vars)
-df2 = combine(groupby(df1,[:Bin_Out,:Virus]),
-    vars .=> mean .=> [:Mean_leave, :Mean_M1Leave, :Mean_M2Leave],
-    vars .=> sem .=> [:Sem_leave, :Sem_M1Leave, :Sem_M2Leave])
-filter!(r -> !isnan(r.Sem_leave), df2)
-sort!(df2,:Bin_Out)
-@df df2 plot(:Bin_Out, :Mean_leave, ribbon = :Sem_leave, group = :Virus,
-    linecolor = :auto, xlims = (5,80), ylims = (0,1), legend = :top,
-    xlabel = "Poke time from trial beginning (s)",
-    ylabel = "Probability of leaving")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","1-Cas_Pleave.pdf"))
+                          ################ Age
+Age_p.LogOut = log10.(Age_p.Out)
+transform!(Age_p, [:Streak, :Out, :LogOut] .=> zscore)
+transform!(Age_s, :Streak .=> zscore)
 
+#Compare AfterLast model
+verbAge00 = @formula(Leave ~ 1 + Streak_zscore + Out_zscore + (1|MouseID));
+LeaveAge00 = fit(MixedModel,verbAge00, Age_p, Bernoulli())
+verbAge0 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + (1|MouseID));
+LeaveAge0 = fit(MixedModel,verbAge0, Age_p, Bernoulli())
+AlAge0 = fit(MixedModel,@formula(AfterLast ~ 1 + Streak_zscore + (1|MouseID)),Age_s)
+AIC_test(AlAge0, LeaveAge0)
+AIC_test(LeaveAge00, LeaveAge0)
+
+verbAge1 = @formula(Leave ~ 1 + Streak_zscore * Age + LogOut_zscore * Age +  (1|MouseID));
+verbAge2 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore * Age +  (1|MouseID));
+verbAge3 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Age + (1|MouseID));
+
+# Group Effect
+LeaveAge1 = fit(MixedModel,verbAge1, Age_p, Bernoulli())
+LeaveAge2 = fit(MixedModel,verbAge2, Age_p, Bernoulli())
+LeaveAge3 = fit(MixedModel,verbAge3, Age_p, Bernoulli())
+
+
+MixedModels.likelihoodratiotest(LeaveAge0,LeaveAge1)
+MixedModels.likelihoodratiotest(LeaveAge0,LeaveAge3)
+
+
+Age_p.M1_Leave = predict(LeaveAge1)
+Age_p.M2_Leave = predict(LeaveAge2)
+Age_p.M3_Leave = predict(LeaveAge3)
+
+## Figures
+                          ################ Virus
+#Row data P leaving
 transform!(Cas_p, :LogOut => (x -> bin_axis(x; length = 20)) => :Bin_LogOut)
-df0 = filter(r -> r.Streak <= 50, Cas_p)
-df1 = combine(groupby(df0,[:MouseID,:Bin_LogOut,:Virus]),
-    vars .=> mean .=> vars)
-df2 = combine(groupby(df1,[:Bin_LogOut,:Virus]),
-    vars .=> mean .=> [:Mean_leave, :Mean_M1Leave, :Mean_M2Leave],
-    vars .=> sem .=> [:Sem_leave, :Sem_M1Leave, :Sem_M2Leave])
-filter!(r -> !isnan(r.Sem_leave), df2)
-sort!(df2,:Bin_LogOut)
-@df df2 plot(:Bin_LogOut, :Mean_leave, ribbon = :Sem_leave, group = :Virus,
-    linecolor = :auto, ylims = (0,1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Probability of leaving")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","2-Cas_LogPleave.pdf"))
+df0 = filter(r -> r.Streak <= 70, Cas_p)
+PLeave_Cas = FLPDevelopment.P_Leave(Cas_p,:Bin_LogOut,:Leave)
+# savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-1-LogPleave.pdf"))
 ## PokeN over trials
-Cas_s.Num_pokes
-Cas_s[!,:BinnedStreak] = bin_axis(Cas_s.Streak; unit_step = 5)
-res = summary_xy(Cas_s,:BinnedStreak,:AfterLast; group = :Virus)
-cas_alXtrial = @df res plot(string.(:BinnedStreak),:Mean, group = :Virus, linecolor = :auto,
-    ribbon = :Sem, xrotation = 50, xlabel = "Trial", ylabel = "Pokes after last reward")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","2-Cas_AlTrial.pdf"))
-res2 = summary_xy(Cas_s,:BinnedStreak,:Num_pokes; group = :Virus)
-cas_pokesXtrial = @df res2 plot(string.(:BinnedStreak),:Mean, group = :Virus, linecolor = :auto,
-    ribbon = :Sem, xrotation = 50, xlabel = "Trial", ylabel = "Number of pokes",size=(600,600))
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","2-Cas_pokesTrial.pdf"))
+Cas_s[!,:BinnedStreak] = bin_axis(Cas_s.Streak; unit_step = 4)
+res1 = summary_xy(Cas_s,:BinnedStreak,:Num_pokes; group = :Virus)
+NPokes_Cas = @df res1 plot(string.(:BinnedStreak),:Mean, group = :Virus, linecolor = :auto,
+    ribbon = :Sem, xlabel = "Trial", ylabel = "Number of pokes",size=(600,600))
+# savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-2-PokesTrial.pdf"))
 ## Model Plot
 rng = MersenneTwister(1234321)
-samp1 = parametricbootstrap(rng,100,LeaveCas1)
-df = DataFrame(samp1.allpars)
-bootdf = combine(groupby(df,[:type, :group, :names]), :value => shortestcovint => :interval)
-bootdf.coef = push!(coef(LeaveCas1), mean(ranef(LeaveCas1)[1]))
-bootdf.variable = ["Intercept", "Trial", "Virus:Caspase", "Poke-time",
+Cas_samp1 = parametricbootstrap(rng,100,LeaveCas1)
+Cas_sampdf = DataFrame(Cas_samp1.allpars)
+Cas_bootdf = combine(groupby(Cas_sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
+Cas_bootdf.coef = push!(coef(LeaveCas1), mean(ranef(LeaveCas1)[1]))
+Cas_bootdf.variable = ["Intercept", "Trial", "Virus:Caspase", "Poke-time",
     "Trial & Virus: Caspase",
     "Poke-time & Virus:Caspase", "MouseID"]
-transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
-@df bootdf[1:end-1,:] scatter(:coef ,1:nrow(bootdf)-1,
+transform!(Cas_bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
+Model_Cas = @df Cas_bootdf[1:end-1,:] scatter(:coef ,1:nrow(Cas_bootdf)-1,
     xerror = :err, xlabel = "Coefficient estimate",
-    yticks = (1:nrow(bootdf), :variable))
+    yticks = (1:nrow(Cas_bootdf), :variable))
 vline!([0], linecolor = :red, legend = false)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","3-LogModel.pdf"))
+# savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-3-LogModel.pdf"))
+
 ## P leave Heatmaps
-df1 = copy(Cas_p)
-transform!(df1, :LogOut => (x -> bin_axis(x; length = 30)) => :Bin_LogOut)#7
-transform!(df1, :Streak => (x -> bin_axis(x; unit_step = 10)) => :Bin_Streak)
-vars = [:Leave, :M1_Leave, :M2_Leave, :M3_Leave]
-df2 = combine(groupby(df1,[:Virus,:Bin_LogOut,:Bin_Streak]),
-    vars .=> mean .=> vars)
+transform!(Cas_p, :LogOut => (x -> bin_axis(x; length = 30)) => :Bin_LogOut)
+transform!(Cas_p, :Streak => (x -> bin_axis(x; unit_step = 10)) => :Bin_Streak)
+heat = Heatmap_group(Cas_p,:Bin_LogOut,:Bin_Streak,:Leave)
+# filter!(r -> 11<= r.Bin_Streak <= 61 && 0.1 <= r.Bin_LogOut <= 1.9, heat)
+heatcas = filter(r -> r.Virus == "Caspase", heat)
+HExp_Cas = Heatmap_plot(heatcas,:Bin_LogOut,:Bin_Streak,:Leave)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-4-Full-HeatmapCaspaseRaw.pdf"))
 ##
-LeaveType = :Leave
-dfcas = filter(r -> r.Virus == "Caspase", df2)
-sort!(dfcas,[:Bin_Streak,:Bin_LogOut])
-filter!(r -> -0.4 <= r.Bin_LogOut <= 2.1 && r.Bin_Streak <= 71, dfcas)
-reshapecas = unstack(dfcas,  :Bin_Streak, :Bin_LogOut, LeaveType)
-ylab = string.(sort(union(reshapecas.Bin_Streak)))
-xlab = string.(sort(union(dfcas.Bin_LogOut)))
-heatmap(xlab, ylab, Matrix(reshapecas[:, Not(:Bin_Streak)]),
-    clim = (0, 1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Trial",
-    colorbar_title = "P Leave",
-    color = :deep)
-##savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","4-HeatmapCasRaw.pdf"))
-# tom
-dftom = filter(r -> r.Virus == "tdTomato", df2)
-sort!(dftom,[:Bin_Streak,:Bin_LogOut])
-filter!(r -> -0.4 <= r.Bin_LogOut <= 2.1 && r.Bin_Streak <= 71, dftom)
-reshapetom = unstack(dftom,:Bin_Streak, :Bin_LogOut, LeaveType)
-ylab = string.(sort(union(reshapetom.Bin_Streak)))
-xlab = string.(sort(union(dftom.Bin_LogOut)))
-heatmap(xlab, ylab, Matrix(reshapetom[:, Not(:Bin_Streak)]),
-    clim = (0, 1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Trial",
-    colorbar_title = "P Leave",
-    color = :deep)
-##savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","5-HeatmapTomRaw.pdf"))
-# difference
-differenza = Matrix(reshapecas[:, Not(:Bin_Streak)]) - Matrix(reshapetom[:, Not(:Bin_Streak)])
-heatmap(xlab, ylab, differenza,
-    clim = (-1, 1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Trial",
-    colorbar_title = "P Leave",
-    color = :deep)
-##savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","6-HeatmapDiffRaw.pdf"))
+heattom = filter(r -> r.Virus == "tdTomato", heat)
+HCon_Cas = FLPDevelopment.Heatmap_plot(heattom,:Bin_LogOut,:Bin_Streak,:Leave)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-5-Full-HeatmapTomatoRaw.pdf"))
 ##
-minOut = 0.1
-maxOut = 1.9
-minStreak = 11
-maxStreak = 71
-LeaveType = :Leave
-dfcas = filter(r -> r.Virus == "Caspase", df2)
-sort!(dfcas,[:Bin_Streak,:Bin_LogOut])
-filter!(r -> minOut <= r.Bin_LogOut <= maxOut && minStreak <= r.Bin_Streak <= maxStreak, dfcas)
-reshapecas = unstack(dfcas,  :Bin_Streak, :Bin_LogOut, LeaveType)
-ycas = string.(sort(union(reshapecas.Bin_Streak)))
-xcas = string.(sort(union(dfcas.Bin_LogOut)))
-heatmap(xcas, ycas, Matrix(reshapecas[:, Not(:Bin_Streak)]),
-    clim = (0, 1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Trial",
-    colorbar_title = "P Leave",
-    color = :deep)
-##savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","4-ZoomHeatmapCasRaw.pdf"))
-# tom
-dftom = filter(r -> r.Virus == "tdTomato", df2)
-sort!(dftom,[:Bin_Streak,:Bin_LogOut])
-filter!(r -> minOut <= r.Bin_LogOut <= maxOut &&  minStreak <= r.Bin_Streak <= maxStreak, dftom)
-reshapetom = unstack(dftom,:Bin_Streak, :Bin_LogOut, LeaveType)
-ytom = string.(sort(union(reshapetom.Bin_Streak)))
-xtom = string.(sort(union(dftom.Bin_LogOut)))
-heatmap(xtom, ytom, Matrix(reshapetom[:, Not(:Bin_Streak)]),
-    clim = (0, 1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Trial",
-    colorbar_title = "P Leave",
-    color = :deep)
-##savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","5-ZoomHeatmapTomRaw.pdf"))
-# difference
-differenza = Matrix(reshapecas[:, Not(:Bin_Streak)]) - Matrix(reshapetom[:, Not(:Bin_Streak)])
-ydiff = string.(sort(union(reshapetom.Bin_Streak)))
-xdiff = string.(sort(union(dftom.Bin_LogOut)))
-heatmap(xdiff, ydiff, differenza,
-    clim = (-1, 1),
-    xlabel = "Poke time from trial beginning (log10 s)",
-    ylabel = "Trial",
-    colorbar_title = "P Leave",
-    color = :deep)
-##savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","6-ZoomHeatmapDiffRaw.pdf"))
+diff = Heatmap_difference(heat,:Bin_LogOut,:Bin_Streak,:Leave; grouping = :Virus, adjust = :trim)
+HDiff_Cas = Heatmap_plot(diff,:Bin_LogOut,:Bin_Streak,:Leave; colorlims = (-1, 1))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-6-Full-HeatmapDiffRaw.pdf"))
+##
+                          ################ Age
+#Row data P leaving
+transform!(Age_p, :LogOut => (x -> bin_axis(x; length = 20)) => :Bin_LogOut)
+# df0 = filter(r -> r.Streak <= 70, Age_p)
+PLeave_Age = FLPDevelopment.P_Leave(Age_p,:Bin_LogOut,:Leave)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-1-LogPleave.pdf"))
+## PokeN over trials
+Age_s[!,:BinnedStreak] = bin_axis(Age_s.Streak; unit_step = 4)
+res1 = summary_xy(Age_s,:BinnedStreak,:Num_pokes; group = :Age)
+NPokes_Age = @df res1 plot(string.(:BinnedStreak),:Mean, group = :Age, linecolor = :auto,
+    ribbon = :Sem, xlabel = "Trial", ylabel = "Number of pokes",size=(600,600))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-2-PokesTrial.pdf"))
+## Model Plot
+rng = MersenneTwister(1234321)
+Age_samp1 = parametricbootstrap(rng,100,LeaveAge1)
+Age_sampdf = DataFrame(Age_samp1.allpars)
+Age_bootdf = combine(groupby(Age_sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
+Age_bootdf.coef = push!(coef(LeaveAge1), mean(ranef(LeaveAge1)[1]))
+Age_bootdf.variable = ["Intercept", "Trial", "Age:Juveniles", "Poke-time",
+    "Trial & Age: Juveniles",
+    "Poke-time & Age:Juveniles", "MouseID"]
+transform!(Age_bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
+Model_Age = @df Age_bootdf[1:end-1,:] scatter(:coef ,1:nrow(Age_bootdf)-1,
+    xerror = :err, xlabel = "Coefficient estimate",
+    yticks = (1:nrow(Age_bootdf), :variable))
+vline!([0], linecolor = :red, legend = false)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-3-LogModel.pdf"))
+## P leave Heatmaps
+transform!(Age_p, :LogOut => (x -> bin_axis(x; length = 30)) => :Bin_LogOut)
+transform!(Age_p, :Streak => (x -> bin_axis(x; unit_step = 10)) => :Bin_Streak)
+Age_heat = Heatmap_group(Age_p,:Bin_LogOut,:Bin_Streak,:Leave)
+filter!(r -> 11<= r.Bin_Streak <= 61 && 0.1 <= r.Bin_LogOut <= 2.1, Age_heat)
+Age_heatcas = filter(r -> r.Age == "Juveniles", Age_heat)
+HExp_Age = Heatmap_plot(Age_heatcas,:Bin_LogOut,:Bin_Streak,:Leave)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-4-HeatmapJuvenilesRaw.pdf"))
+##
+Age_heattom = filter(r -> r.Age == "Adults", Age_heat)
+HCon_Age = FLPDevelopment.Heatmap_plot(Age_heattom,:Bin_LogOut,:Bin_Streak,:Leave)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-5-HeatmapAdultsRaw.pdf"))
+##
+Age_diff = Heatmap_difference(Age_heat,:Bin_LogOut,:Bin_Streak,:Leave; grouping = :Age, adjust = :trim)
+HDiff_Age = Heatmap_plot(Age_diff,:Bin_LogOut,:Bin_Streak,:Leave; colorlims = (-1, 1))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-6-HeatmapDiffRaw.pdf"))

@@ -159,8 +159,12 @@ function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
     end
     label_df[!,:xpos] = 1:nrow(label_df)
     leftjoin(df1,label_df; on = xvar)
-    firstval = union(df1[:,xvar])[1]
-    df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
+    try
+        firstval = union(df1[:,xvar])[1]
+        df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
+    catch
+        println("Can'case1 define x position")
+    end
     return df1
 end
 
@@ -558,8 +562,8 @@ function calculate_bin_duration(df,variable, group; modality = :QUANTILE, qs = 0
     df3 = combine(gd) do dd
         df2 = DataFrame(Bin = Float64[], Count = Int[])
         # for (k,v) in countmap(dd[:, future_col])
-        for t in treshvec
-            push!(df2,[t,sum(dd[:,future_col] .== t)])
+        for case1 in treshvec
+            push!(df2,[case1,sum(dd[:,future_col] .== case1)])
         end
         df2
     end
@@ -592,11 +596,11 @@ function plot_bin_duration(df, group; variable = "undef", fontx = 11)
         dd = filter(r -> r.MouseID == m, df)
         ntrials = sum(dd.Count)
         if group == :Virus
-            c = dd[1,:Virus] == "Caspase" ? :red : :black
+            case2 = dd[1,:Virus] == "Caspase" ? :red : :black
         elseif group == :Age
-            c = dd[1,:Age] == Juveniles ? :red : :black
+            case2 = dd[1,:Age] == Juveniles ? :red : :black
         else
-            c = :auto
+            case2 = :auto
         end
         plt = @df dd bar(:Bin,:Count,
             xticks = round.(union(:Bin), digits = 2),
@@ -605,7 +609,7 @@ function plot_bin_duration(df, group; variable = "undef", fontx = 11)
             xlabel = String(variable),
             yticks = 0:5:100,
             grid = true,
-            color = c,
+            color = case2,
             ylabel = m,
             label = "n trials = " * string(ntrials),
             legend = :top)
@@ -630,4 +634,119 @@ function pokes_psth(In,Out; bin_size = 1)
         end
     end
     return (Time = collect(times), Psth = vector)
+end
+### Leaving Analysis
+function P_Leave(pokedf,xvar, yvar; grouping = nothing, xlims = :auto)
+    if isnothing(grouping)
+        if in(:Age,propertynames(pokedf))
+            grouping = :Age
+        elseif in(:Virus,propertynames(pokedf))
+            grouping = :Virus
+        else
+            grouping = nothing
+         end
+    end
+    res = summary_xy(pokedf,xvar,yvar; group = grouping)
+    filter!(r -> !isnan(r.Sem), res)
+    sort!(res,xvar)
+    @df res plot(cols(xvar), :Mean, ribbon = :Sem, group = cols(grouping),
+        linecolor = :auto, ylims = (0,1), xlims = xlims,
+        xlabel = "Poke time from trial beginning (log10 s)",
+        ylabel = "Probability of leaving")
+end
+
+function Heatmap_summary(pokedf, x,y,z)
+    df1 = copy(pokedf)
+    # if isnothing(grouping)
+    #     if in(:Age,propertynames(pokedf))
+    #         grouping = :Age
+    #     elseif in(:Virus,propertynames(pokedf))
+    #         grouping = :Virus
+    #     else
+    #         error("can'case1 autofind grouping variable")
+    #      end
+    #      groupvec = [x,y,grouping]
+    #  elseif !grouping
+    #      groupvec = [x,y]
+    # end
+    df2 = combine(groupby(df1,[x,y]),
+        z .=> mean .=> z)
+    sort!(df2,[y,x])
+end
+
+function Heatmap_group(pokedf, x,y,z; grouping = nothing)
+    if isnothing(grouping)
+        if in(:Age,propertynames(pokedf))
+            grouping = :Age
+        elseif in(:Virus,propertynames(pokedf))
+            grouping = :Virus
+        else
+            grouping = nothing
+         end
+    end
+    heat = combine(groupby(pokedf,grouping)) do dd
+        Heatmap_summary(dd, x, y, z)
+    end
+    sort!(heat,[grouping,y,x])
+end
+
+function Heatmap_matrix(dfheat, x, y, z)
+    reshape_heat = unstack(dfheat,  y, x, z)
+    Matrix(reshape_heat[:, Not(y)])
+end
+
+function Heatmap_difference(dfheat, x, y, z; grouping = nothing, adjust = :trim)
+    if isnothing(grouping)
+        if in(:Age,propertynames(dfheat))
+            grouping = :Age
+        elseif in(:Virus,propertynames(dfheat))
+            grouping = :Virus
+        else
+            error("Can't identify 2 groups for subtraction")
+        end
+    end
+    if isa(dfheat[:,grouping], CategoricalVector)
+        cases = levels(dfheat[:,grouping])
+    else
+        cases = union(dfheat[:,grouping])
+    end
+    diff = unstack(dfheat,grouping,z)
+    if adjust == :trim
+        dropmissing!(diff)
+    end
+    diff[:, z] = diff[:,cases[2]] .- diff[:,cases[1]]
+    diff[:, Not([cases[1], cases[2]])]
+end
+
+# function size_adjust!(m1, m2; adjust = :full)
+#     if adjust == :full
+#         if size(m1,1) != size(m2,1)
+#             size(m1,1) < size(m2,1) ? m1 = vcat(m1, missings(size(m2,1) - size(m1,1), size(m1,2))) :
+#                 m2 = vcat(m2, missings(size(m1,1) - size(m2,1), size(m2,2)))
+#         end
+#         if size(m1,2) != size(m2,2)
+#             size(m1,2) < size(m2,2) ? m1 = hcat(m1, missings(size(m1,1), size(m2,2) - size(m1,2))) :
+#                 m2 = hcat(m2, missings(size(m2,1), size(m1,2) - size(m2,2)))
+#         end
+#     elseif adjust == :trim
+#         if size(m1,1) != size(m2,1)
+#             size(m1,1) < size(m2,1) ? m2 = m2[1:size(m1,1),:] : m1=m1[1:size(m2,1),:]
+#         end
+#         if size(m1,2) != size(m2,2)
+#             size(m1,2) < size(m2,2) ? m2 = m2[:,1:size(m1,2)] : m1=m1[:,1:size(case2,2)]
+#         end
+#     end
+#     return m1, m2
+# end
+
+function Heatmap_plot(dfheat, x, y, z; colorlims = (0,1))
+    xlab = string.(sort(union(dfheat[:, x])))
+    ylab = string.(sort(union(dfheat[:, y])))
+    matheat = Heatmap_matrix(dfheat, x, y, z)
+    heatmap(xlab, ylab, matheat,
+        clim = colorlims,
+        xlabel = "Poke time from trial beginning (log10 s)",
+        ylabel = "Trial",
+        colorbar_title = "P Leave",
+        color = :deep)
 end
