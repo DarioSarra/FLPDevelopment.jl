@@ -2,7 +2,7 @@
     `summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothing)`
 """
 function summary_xy(df,xvar,yvar; summary = mean, err = :MouseID, group = nothing)
-    if group == nothing
+    if isnothing(group)
         m_res = individual_summary(df,xvar,yvar; summary = summary, err = err)
         gd = groupby(m_res,xvar)
         res = combine(gd,yvar => mean => :Mean, yvar => sem => :Sem, yvar => length => :n)
@@ -270,13 +270,7 @@ end
 ## check distributions
 function check_distribution(df, var; grouping = nothing, summary_opt = :MEAN)
     if isnothing(grouping)
-        if in(:Age,propertynames(df))
-            grouping = :Age
-        elseif in(:Virus,propertynames(df))
-            grouping = :Virus
-        else
-            error("Enable to find grouping variable")
-         end
+        grouping = check_group(df)
     end
     # Density
     grouped_df = group_distribution(df,var, group = grouping)
@@ -299,11 +293,7 @@ end
 
 function check_distributions(df_s,df_p; grouping = nothing, summary_opt = :MEAN)
     if isnothing(grouping)
-        if in(:Age,propertynames(df_s))
-            grouping = :Age
-        elseif in(:Virus,propertynames(df_s))
-            grouping = :Virus
-         end
+        grouping = check_group(df_s)
     end
     # AfterLast
     dAF, tAF, sAF, bAF = check_distribution(df_s,:AfterLast)
@@ -464,11 +454,7 @@ end
 
 function vars_fig(df_s; grouping = nothing, summary_opt = :MEAN)
     if isnothing(grouping)
-        if in(:Age,propertynames(df_s))
-            grouping = :Age
-        elseif in(:Virus,propertynames(df_s))
-            grouping = :Virus
-         end
+        grouping = check_group(df_s)
     end
     # return variable mean over trials, distribution, and statistics
     ALt,ALd,ALs = var_plots(df_s, :AfterLast; grouping = grouping)
@@ -638,13 +624,7 @@ end
 ### Leaving Analysis
 function P_Leave(pokedf,xvar, yvar; grouping = nothing, xlims = :auto)
     if isnothing(grouping)
-        if in(:Age,propertynames(pokedf))
-            grouping = :Age
-        elseif in(:Virus,propertynames(pokedf))
-            grouping = :Virus
-        else
-            grouping = nothing
-         end
+        grouping = check_group(pokedf)
     end
     res = summary_xy(pokedf,xvar,yvar; group = grouping)
     filter!(r -> !isnan(r.Sem), res)
@@ -657,18 +637,6 @@ end
 
 function Heatmap_summary(pokedf, x,y,z)
     df1 = copy(pokedf)
-    # if isnothing(grouping)
-    #     if in(:Age,propertynames(pokedf))
-    #         grouping = :Age
-    #     elseif in(:Virus,propertynames(pokedf))
-    #         grouping = :Virus
-    #     else
-    #         error("can'case1 autofind grouping variable")
-    #      end
-    #      groupvec = [x,y,grouping]
-    #  elseif !grouping
-    #      groupvec = [x,y]
-    # end
     df2 = combine(groupby(df1,[x,y]),
         z .=> mean .=> z)
     sort!(df2,[y,x])
@@ -676,13 +644,7 @@ end
 
 function Heatmap_group(pokedf, x,y,z; grouping = nothing)
     if isnothing(grouping)
-        if in(:Age,propertynames(pokedf))
-            grouping = :Age
-        elseif in(:Virus,propertynames(pokedf))
-            grouping = :Virus
-        else
-            grouping = nothing
-         end
+        grouping = check_group(pokedf)
     end
     heat = combine(groupby(pokedf,grouping)) do dd
         Heatmap_summary(dd, x, y, z)
@@ -697,13 +659,7 @@ end
 
 function Heatmap_difference(dfheat, x, y, z; grouping = nothing, adjust = :trim)
     if isnothing(grouping)
-        if in(:Age,propertynames(dfheat))
-            grouping = :Age
-        elseif in(:Virus,propertynames(dfheat))
-            grouping = :Virus
-        else
-            error("Can't identify 2 groups for subtraction")
-        end
+        grouping = check_group(dfheat)
     end
     if isa(dfheat[:,grouping], CategoricalVector)
         cases = levels(dfheat[:,grouping])
@@ -739,7 +695,7 @@ end
 #     return m1, m2
 # end
 
-function Heatmap_plot(dfheat, x, y, z; colorlims = (0,1))
+function Heatmap_plot(dfheat, x, y, z; colorlims = (0,1), colorscheme = Heat_pal1)
     xlab = string.(sort(union(dfheat[:, x])))
     ylab = string.(sort(union(dfheat[:, y])))
     matheat = Heatmap_matrix(dfheat, x, y, z)
@@ -748,5 +704,62 @@ function Heatmap_plot(dfheat, x, y, z; colorlims = (0,1))
         xlabel = "Poke time from trial beginning (log10 s)",
         ylabel = "Trial",
         colorbar_title = "P Leave",
-        color = :deep)
+        color = colorscheme)#:deep)
+end
+
+Heat_pal1 = cgrad([RGB(218/255, 238/255, 235/255), RGB(57/255, 153/255, 145/255), RGB(0/255, 66/255, 55/255)])
+Heat_pal2 = :BrBg_11
+
+function Leave_plots(pokedf,streakdf; grouping = nothing, model_plt = nothing, filtering = false)
+    grouping = check_group(pokedf)
+    cases = levels(pokedf[:,grouping])
+    transform!(pokedf, :LogOut => (x -> bin_axis(x; length = 20)) => :Bin_LogOut)
+    df0 = filter(r -> r.Streak <= 70, pokedf)
+    PLeave = P_Leave(pokedf,:Bin_LogOut,:Leave)
+    streakdf[!,:BinnedStreak] = bin_axis(streakdf.Streak; unit_step = 4)
+    res1 = summary_xy(streakdf,:BinnedStreak,:Num_pokes; group = grouping)
+    NPokes = @df filter(grouping => t -> t == cases[1], res1) plot(string.(:BinnedStreak),:Mean, linecolor = :auto,
+        ribbon = :Sem, xlabel = "Trial", ylabel = "Number of pokes",size=(650,600),left_margin = 50px) #group = cols(grouping),
+        @df filter(grouping => t -> t == cases[2], res1) plot!(string.(:BinnedStreak),:Mean,
+            linecolor = :auto, ribbon = :Sem, legend = false)
+    pokedf.LogOut = log10.(pokedf.Out)
+    Model = isnothing(model_plt) ? leave_modelplt(pokedf, grouping) : model_plt
+    transform!(pokedf, :LogOut => (x -> bin_axis(x; length = 30)) => :Bin_LogOut)
+    transform!(pokedf, :Streak => (x -> bin_axis(x; unit_step = 10)) => :Bin_Streak)
+    heat = Heatmap_group(pokedf,:Bin_LogOut,:Bin_Streak,:Leave)
+    argument = ([:Bin_Streak,:Bin_LogOut] => (s,o) ->(11<= s <= 61 && 0.1 <= o <= 2.1))
+    filtering && filter!(argument, heat)
+    heat_exp = filter(grouping => t -> t == cases[2], heat)
+    HExp = Heatmap_plot(heat_exp,:Bin_LogOut,:Bin_Streak,:Leave)
+    title!(HExp, cases[2])
+    heat_con = filter(grouping => t -> t == cases[1], heat)
+    HCon = Heatmap_plot(heat_con,:Bin_LogOut,:Bin_Streak,:Leave)
+    title!(HCon, cases[1])
+    ylabel!(HCon,"")
+    diff = Heatmap_difference(heat,:Bin_LogOut,:Bin_Streak,:Leave; grouping = grouping, adjust = :trim)
+    HDiff = Heatmap_plot(diff,:Bin_LogOut,:Bin_Streak,:Leave; colorlims = (-1, 1), colorscheme = :BrBG_11)
+    title!(HDiff, "$(cases[2]) - $(cases[1])")
+    ylabel!(HDiff,"")
+    return PLeave, NPokes, Model, HExp, HCon, HDiff
+end
+
+function leave_modelplt(pokedf,grouping)
+    transform!(pokedf, [:Streak, :Out, :LogOut] .=> zscore)
+    verb = @eval @formula(Leave ~ 1 + Streak_zscore * $grouping + LogOut_zscore * $grouping +  (1|MouseID))
+    LeaveModel = fit(MixedModel,verb, pokedf, Bernoulli())
+    rng = MersenneTwister(1234321)
+    samp1 = parametricbootstrap(rng,100,LeaveModel)
+    sampdf = DataFrame(samp1.allpars)
+    bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
+    bootdf.coef = push!(coef(LeaveModel), mean(ranef(LeaveModel)[1]))
+    cases = levels(pokedf[:,grouping])
+    bootdf.variable = ["Intercept", "Trial", "$grouping: $(cases[2])", "Poke-time",
+        "Trial & $grouping: $(cases[2])",
+        "Poke-time & $grouping: $(cases[2])", "MouseID"]
+    transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
+    Model = @df bootdf[1:end-1,:] scatter(:coef ,1:nrow(bootdf)-1,
+        xerror = :err, xlabel = "Coefficient estimate",
+        yticks = (1:nrow(bootdf), :variable), legend = false)
+    vline!([0], linecolor = :red, legend = false)
+    return Model
 end

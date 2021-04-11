@@ -102,6 +102,15 @@ function quantile_vec(vec, bins)
     [isnothing(x) ? 1 : qbins[x] for x in pre]
 end
 
+function check_group(df)
+    if in(:Age,propertynames(df))
+        return grouping = :Age
+    elseif in(:Virus,propertynames(df))
+        return grouping = :Virus
+    else
+        error("Can't identify 2 groups for subtraction")
+    end
+end
 """
     process_filtered_streak(df::AbstractDataFrame, var::Symbol, val <:Number)
 
@@ -317,4 +326,14 @@ function reprocess_streaks(pokes_df::AbstractDataFrame)
     transform!(gd, :Num_Rewards => cumsum => :Cum_Rewards)
     streak_df[!,:RewRate] = streak_df.Cum_Rewards ./ streak_df.Stop
     return streak_df
+end
+
+function filter_pokestreak(pokedf; min = 0.05, max = 50000)
+    Remove_vals = [:Stim, :StimFreq, :Wall, :Block, :Delta, :Turn, :StreakInBlock, :ReverseStreak]
+    N_pokes = pokedf[:,Not(Remove_vals)]
+    F_pokes = combine(groupby(N_pokes, :Session)) do dd
+        rm_interpokes(copy(dd); shortlimit = 0.1, longlimit = 50000)
+    end
+    F_streaks = reprocess_streaks(F_pokes)
+    return F_pokes, F_streaks
 end
