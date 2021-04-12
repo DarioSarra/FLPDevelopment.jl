@@ -150,7 +150,7 @@ function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
     else
         gdc = groupby(df,[xvar,err])
     end
-    df1 = combine(yvar => summary => yvar,gdc)
+    df1 = combine(gdc,yvar => summary => yvar)
     sort!(df1,xvar)
     if multiple
         label_df = unique(df1[:,xvar])
@@ -696,9 +696,11 @@ function Leave_plots(pokedf,streakdf; grouping = nothing, model_plt = nothing, f
     df0 = filter(r -> r.Streak <= 70, pokedf)
     PLeave = P_Leave(pokedf,:Bin_LogOut,:Leave)
     streakdf[!,:BinnedStreak] = bin_axis(streakdf.Streak; unit_step = 4)
-    res1 = summary_xy(streakdf,:BinnedStreak,:Num_pokes; group = grouping)
+    # res1 = summary_xy(streakdf,:BinnedStreak,:Num_pokes; group = grouping)
+    ystreak = :LogDuration
+    res1 = summary_xy(streakdf,:BinnedStreak,ystreak; group = grouping)
     NPokes = @df filter(grouping => t -> t == cases[1], res1) plot(string.(:BinnedStreak),:Mean, linecolor = :auto,
-        ribbon = :Sem, xlabel = "Trial", ylabel = "Number of pokes",size=(650,600),left_margin = 50px) #group = cols(grouping),
+        ribbon = :Sem, xlabel = "Trial", ylabel = ystreak#="Number of pokes"=#,size=(650,600),left_margin = 50px) #group = cols(grouping),
         @df filter(grouping => t -> t == cases[2], res1) plot!(string.(:BinnedStreak),:Mean,
             linecolor = :auto, ribbon = :Sem, legend = false)
     pokedf.LogOut = log10.(pokedf.Out)
