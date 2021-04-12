@@ -332,7 +332,7 @@ function filter_pokestreak(pokedf; min = 0.05, max = 50000)
     Remove_vals = [:Stim, :StimFreq, :Wall, :Block, :Delta, :Turn, :StreakInBlock, :ReverseStreak]
     N_pokes = pokedf[:,Not(Remove_vals)]
     F_pokes = combine(groupby(N_pokes, :Session)) do dd
-        rm_interpokes(copy(dd); shortlimit = 0.1, longlimit = 50000)
+        rm_interpokes(copy(dd); shortlimit = min, longlimit = max)
     end
     F_streaks = reprocess_streaks(F_pokes)
     return F_pokes, F_streaks

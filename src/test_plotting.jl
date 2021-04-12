@@ -674,27 +674,6 @@ function Heatmap_difference(dfheat, x, y, z; grouping = nothing, adjust = :trim)
     diff[:, Not([cases[1], cases[2]])]
 end
 
-# function size_adjust!(m1, m2; adjust = :full)
-#     if adjust == :full
-#         if size(m1,1) != size(m2,1)
-#             size(m1,1) < size(m2,1) ? m1 = vcat(m1, missings(size(m2,1) - size(m1,1), size(m1,2))) :
-#                 m2 = vcat(m2, missings(size(m1,1) - size(m2,1), size(m2,2)))
-#         end
-#         if size(m1,2) != size(m2,2)
-#             size(m1,2) < size(m2,2) ? m1 = hcat(m1, missings(size(m1,1), size(m2,2) - size(m1,2))) :
-#                 m2 = hcat(m2, missings(size(m2,1), size(m1,2) - size(m2,2)))
-#         end
-#     elseif adjust == :trim
-#         if size(m1,1) != size(m2,1)
-#             size(m1,1) < size(m2,1) ? m2 = m2[1:size(m1,1),:] : m1=m1[1:size(m2,1),:]
-#         end
-#         if size(m1,2) != size(m2,2)
-#             size(m1,2) < size(m2,2) ? m2 = m2[:,1:size(m1,2)] : m1=m1[:,1:size(case2,2)]
-#         end
-#     end
-#     return m1, m2
-# end
-
 function Heatmap_plot(dfheat, x, y, z; colorlims = (0,1), colorscheme = Heat_pal1)
     xlab = string.(sort(union(dfheat[:, x])))
     ylab = string.(sort(union(dfheat[:, y])))
@@ -762,4 +741,49 @@ function leave_modelplt(pokedf,grouping)
         yticks = (1:nrow(bootdf), :variable), legend = false)
     vline!([0], linecolor = :red, legend = false)
     return Model
+end
+
+############## single animal plotting
+function bymouse_logtimehist(df,var; grouping = nothing, digits = 1)
+    df0 = copy(df)
+    if isnothing(grouping)
+        grouping = check_group(df0)
+    end
+    cases = levels(df0[:,grouping])
+    an_title = Symbol("Log_"*string(var))
+    transform!(df0, var => (t -> round.(log10.(t); digits = digits)) => an_title)
+    plot_vec = []
+    combine(groupby(df0,:MouseID)) do dd
+        c = dd[1,grouping] == cases[1] ? get_color_palette(:auto,plot_color(:white))[1] : get_color_palette(:auto,plot_color(:white))[2]
+        m = dd.MouseID[1]
+        dd2 = dropmissing(dd)
+        dens = @df dd2 density(cols(an_title), linecolor = c,
+            title = string(grouping), xlabel = string(an_title), label = "")
+        gmix1 = GMM(2,dd2.Log_PostInterpoke)
+        gmix2 = GMM(3,dd2.Log_PostInterpoke)
+        choice = mixture_Likelyhood_Ratio_test(MixtureModel(gmix1),MixtureModel(gmix2),dd2[:,an_title]) < 0.05 ? gmix2 : gmix1
+        vline!(dens, means(choice), linecolor = :black, linestyle = :dash, label = "")
+        annotate!(-2,0.3,Plots.text(join(string.(round.(means(choice),digits = 3)),"<br>"), 10))
+        hist = @df dd2 histogram(cols(an_title), bins = 100,
+            linecolor = c, fillcolor = c,
+            label = :MouseID[1], title = string(grouping), xlabel = string(an_title))
+        plt = plot(dens,hist,size = (1200,600))
+        push!(plot_vec, plt)
+        pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/DarioDevelopment"
+        pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/DarioDevelopment"
+        if ispath(pathMac)
+            path = pathMac
+        elseif ispath(pathLin)
+            path = pathLin
+        else
+            error("unknown path")
+        end
+        savingfolder = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime", string(an_title))
+        !ispath(savingfolder) && mkdir(savingfolder)
+        savefig(plt,joinpath(savingfolder,m*".png"))
+
+        # dd2 = combine(grouby(dd,an_title), nrow => :Count)
+        # hist = @df dd2 bar(cols(an_title), :Count)
+    end
+    return plot_vec
 end

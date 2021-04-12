@@ -13,6 +13,12 @@ function Likelyhood_Ratio_test(simple,full)
     show(res)
 end
 
+function mixture_Likelyhood_Ratio_test(simple,full,vec)
+    χdegrees = length(full.components)*2 - length(simple.components)*2
+    χ = 2* loglikelihood(simple,vec)/loglikelihood(full,vec)
+    Pχ = ccdf(Distributions.Chisq(χdegrees), χ)
+end
+
 function AIC_test(simple, full)
     exp((aic(full) - aic(simple))/2)
 end
