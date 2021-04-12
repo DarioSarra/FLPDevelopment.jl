@@ -18,9 +18,14 @@ for df in (Age_p, Age_b, Age_s)
     df[!,:Exp_type] = [x in age_exp ? "Development" : "Projections" for x in df.MouseID]
     filter!(r->r.Exp_type == "Development",df)
     df[!,:Age] = [x in youngs ? "Juveniles" : "Adults" for x in df.MouseID]
+    transform!(df, :Age => categorical, renamecols=false)
     gd = groupby(df,:Session)
     transform!(gd, :Streak => maximum => :Performance)
 end
+
+levels!(Age_p.Age,["Adults", "Juveniles"])
+levels!(Age_b.Age,["Adults", "Juveniles"])
+levels!(Age_s.Age,["Adults", "Juveniles"])
 
 Afreq = countmap(Age_s.AfterLast)
 Aprob = Dict()

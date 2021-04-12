@@ -115,11 +115,11 @@ savefig(Age_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures",
 
 ##
 FAge_p, FAge_s = filter_pokestreak(Age_p)
-PLeave_FAge, NPokes_FAge, Model_FAge, HExp_FAge, HCon_FAge, HDiff_FAge = Leave_plots(FAge_p, FAge_s; model_plt = Model_FAge, filtering = true)
+PLeave_FAge, NPokes_FAge, Model_FAge, HExp_FAge, HCon_FAge, HDiff_FAge = Leave_plots(FAge_p, FAge_s)#; model_plt = Model_FAge, filtering = true)
 FAge_top = plot(PLeave_FAge, NPokes_FAge, Model_FAge, layout = (1,3),size = (1850,600))
 FAge_bot = plot(HExp_FAge, HCon_FAge, HDiff_FAge, layout = (1,3), size = (1850,600))
 savefig(FAge_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-4-Filt-Correlations.html"))
-savefig(FAge_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-6-Filt-Heatmaps.html"))
+savefig(FAge_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-5-Filt-FullHeatmaps.html"))
 ##
 PLeave_Cas, NPokes_Cas, Model_Cas, HExp_Cas, HCon_Cas, HDiff_Cas = Leave_plots(Cas_p, Cas_s; model_plt = Model_Cas, filtering = true)
 Cas_top = plot(PLeave_Cas, NPokes_Cas, Model_Cas, layout = (1,3), size = (1850,600))
@@ -132,4 +132,4 @@ PLeave_FCas, NPokes_FCas, Model_FCas, HExp_FCas, HCon_FCas, HDiff_FCas = Leave_p
 FCas_top = plot(PLeave_FCas, NPokes_FCas, Model_FCas, layout = (1,3), size = (1850,600))
 FCas_bot = plot(HExp_FCas, HCon_FCas, HDiff_FCas, layout = (1,3), size = (1850,600))
 savefig(FCas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-4-Filt-Correlations.html"))
-savefig(FCas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-6-Filt-Heatmaps.html"))
+savefig(FCas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-5-Filt-FullHeatmaps.html"))
