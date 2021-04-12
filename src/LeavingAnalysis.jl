@@ -45,6 +45,7 @@ open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
                ################ Virus
 
 Cas_p.LogOut = log10.(Cas_p.Out)
+Cas_s.LogDuration = log10.(Cas_s.Trial_duration)
 transform!(Cas_p, [:Streak, :Out, :LogOut] .=> zscore)
 transform!(Cas_s, :Streak .=> zscore)
 
@@ -76,6 +77,7 @@ Cas_p.M2_Leave = predict(LeaveCas2)
 Cas_p.M3_Leave = predict(LeaveCas3)
                           ################ Age
 Age_p.LogOut = log10.(Age_p.Out)
+Age_s.LogDuration = log10.(Age_s.Trial_duration)
 transform!(Age_p, [:Streak, :Out, :LogOut] .=> zscore)
 transform!(Age_s, :Streak .=> zscore)
 
@@ -107,29 +109,62 @@ Age_p.M2_Leave = predict(LeaveAge2)
 Age_p.M3_Leave = predict(LeaveAge3)
 
 ## Figures
-PLeave_Age, NPokes_Age, Model_Age, HExp_Age, HCon_Age, HDiff_Age = Leave_plots(Age_p, Age_s; model_plt = Model_Age, filtering = true)
+Age_p.LogOut = log10.(Age_p.Out)
+Age_s.LogDuration = log10.(Age_s.Trial_duration)
+PLeave_Age, NPokes_Age, Model_Age, HExp_Age, HCon_Age, HDiff_Age = Leave_plots(Age_p, Age_s)#; model_plt = Model_Age, filtering = true)
 Age_top = plot(PLeave_Age, NPokes_Age, Model_Age, layout = (1,3), size = (1850,600))
 Age_bot = plot(HExp_Age, HCon_Age, HDiff_Age, layout = (1,3), size = (1850,600))
-savefig(Age_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-1-Correlations.html"))
+savefig(Age_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-1-DurCorrelations.html"))
 savefig(Age_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-3-Heatmaps.html"))
 
 ##
 FAge_p, FAge_s = filter_pokestreak(Age_p)
-PLeave_FAge, NPokes_FAge, Model_FAge, HExp_FAge, HCon_FAge, HDiff_FAge = Leave_plots(FAge_p, FAge_s)#; model_plt = Model_FAge, filtering = true)
+FAge_p.LogOut = log10.(FAge_p.Out)
+FAge_s.LogDuration = log10.(FAge_s.Trial_duration)
+PLeave_FAge, NPokes_FAge, Model_FAge, HExp_FAge, HCon_FAge, HDiff_FAge = Leave_plots(FAge_p, FAge_s; model_plt = Model_FAge, filtering = true)
 FAge_top = plot(PLeave_FAge, NPokes_FAge, Model_FAge, layout = (1,3),size = (1850,600))
 FAge_bot = plot(HExp_FAge, HCon_FAge, HDiff_FAge, layout = (1,3), size = (1850,600))
-savefig(FAge_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-4-Filt-Correlations.html"))
+savefig(FAge_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-4-Filt-DurCorrelations.html"))
 savefig(FAge_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-5-Filt-FullHeatmaps.html"))
 ##
+Cas_p.LogOut = log10.(Cas_p.Out)
+Cas_s.LogDuration = log10.(Cas_s.Trial_duration)
 PLeave_Cas, NPokes_Cas, Model_Cas, HExp_Cas, HCon_Cas, HDiff_Cas = Leave_plots(Cas_p, Cas_s; model_plt = Model_Cas, filtering = true)
 Cas_top = plot(PLeave_Cas, NPokes_Cas, Model_Cas, layout = (1,3), size = (1850,600))
 Cas_bot = plot(HExp_Cas, HCon_Cas, HDiff_Cas, layout = (1,3), size = (1850,600))
-savefig(Cas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-1-Correlations.html"))
+savefig(Cas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-1-DurationCorrelations.html"))
 savefig(Cas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-3-Heatmaps.html"))
 ##
 FCas_p, FCas_s = filter_pokestreak(Cas_p)
-PLeave_FCas, NPokes_FCas, Model_FCas, HExp_FCas, HCon_FCas, HDiff_FCas = Leave_plots(FCas_p, FCas_s; model_plt = Model_FCas, filtering = true)
+FCas_p.LogOut = log10.(FCas_p.Out)
+FCas_s.LogDuration = log10.(FCas_s.Trial_duration)
+PLeave_FCas, NPokes_FCas, Model_FCas, HExp_FCas, HCon_FCas, HDiff_FCas = Leave_plots(FCas_p, FCas_s)#; model_plt = Model_FCas, filtering = true)
 FCas_top = plot(PLeave_FCas, NPokes_FCas, Model_FCas, layout = (1,3), size = (1850,600))
 FCas_bot = plot(HExp_FCas, HCon_FCas, HDiff_FCas, layout = (1,3), size = (1850,600))
-savefig(FCas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-4-Filt-Correlations.html"))
+savefig(FCas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-4-Filt-DurCorrelations.html"))
 savefig(FCas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-5-Filt-FullHeatmaps.html"))
+#### Median Survival Time
+df = Cas_s
+grouping = FLPDevelopment.check_group(df)
+variable = :LogDuration
+dd1 = combine(groupby(Cas_s,[:MouseID,grouping]), variable => median => variable)
+dd2 = combine(groupby(dd1,grouping), variable => (t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
+@df dd2 scatter(string.(cols(grouping)), :Mean, yerror = :Sem)
+## Survival rate (1-ecdf)
+xaxis = range(extrema(df[:,variable])..., step =0.05)
+dd1 = combine(groupby(Cas_s,[:MouseID,grouping]), variable =>
+    (t -> (variable = xaxis, Survival = 1 .- ecdf(t).(xaxis))) => [variable, :Survival])
+sort!(dd1,[:MouseID,variable])
+dd2 = combine(groupby(dd1,[grouping,variable]), :Survival =>(t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
+@df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping))
+## Hazard
+xaxis = range(extrema(df[:,variable])..., step =0.05)
+dd1 = combine(groupby(Cas_s,[:MouseID,grouping]), variable =>
+    (t -> (variable = xaxis, Survival = 1 .- ecdf(t).(xaxis))) => [variable, :Survival])
+sort!(dd1,[:MouseID,variable,:Survival])
+transform!(dd1, :Survival => (s -> -pushfirst!(diff(s),0)./s) => :Hazard)
+dd1.Hazard[dd1.Hazard .== Inf].= 1
+filter!(:Hazard => !isnan, dd1)
+dd2 = combine(groupby(dd1,[grouping,variable]), :Hazard =>(t-> (Mean = mean(t),Sem = sem(t), Count = length(t))) => AsTable)
+filter!(r -> r.Sem !=0 && r.Count >= 3 && r.Mean >= 0, dd2)
+@df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping))
