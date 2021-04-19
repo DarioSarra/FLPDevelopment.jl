@@ -689,22 +689,20 @@ end
 Heat_pal1 = cgrad([RGB(218/255, 238/255, 235/255), RGB(57/255, 153/255, 145/255), RGB(0/255, 66/255, 55/255)])
 Heat_pal2 = :BrBg_11
 
-function Leave_plots(pokedf,streakdf; grouping = nothing, model_plt = nothing, filtering = false)
+function Leave_plots(pokedf,streakdf, modeldf; grouping = nothing, filtering = false)
     grouping = check_group(pokedf)
     cases = levels(pokedf[:,grouping])
     transform!(pokedf, :LogOut => (x -> bin_axis(x; length = 20)) => :Bin_LogOut)
     df0 = filter(r -> r.Streak <= 70, pokedf)
     PLeave = P_Leave(pokedf,:Bin_LogOut,:Leave)
     streakdf[!,:BinnedStreak] = bin_axis(streakdf.Streak; unit_step = 4)
-    # res1 = summary_xy(streakdf,:BinnedStreak,:Num_pokes; group = grouping)
-    ystreak = :LogDuration
-    res1 = summary_xy(streakdf,:BinnedStreak,ystreak; group = grouping)
-    NPokes = @df filter(grouping => t -> t == cases[1], res1) plot(string.(:BinnedStreak),:Mean, linecolor = :auto,
-        ribbon = :Sem, xlabel = "Trial", ylabel = ystreak#="Number of pokes"=#,size=(650,600),left_margin = 50px) #group = cols(grouping),
+    res1 = summary_xy(streakdf,:BinnedStreak,:LogDuration; group = grouping)
+    LeavexTrial = @df filter(grouping => t -> t == cases[1], res1) plot(string.(:BinnedStreak),:Mean, linecolor = :auto,
+        ribbon = :Sem, xlabel = "Trial", ylabel = :LogDuration,size=(650,600),left_margin = 50px) #group = cols(grouping),
         @df filter(grouping => t -> t == cases[2], res1) plot!(string.(:BinnedStreak),:Mean,
             linecolor = :auto, ribbon = :Sem, legend = false)
     pokedf.LogOut = log10.(pokedf.Out)
-    Model = isnothing(model_plt) ? leave_modelplt(pokedf, grouping) : model_plt
+    Model = leave_modelplt(modeldf)
     transform!(pokedf, :LogOut => (x -> bin_axis(x; length = 30)) => :Bin_LogOut)
     transform!(pokedf, :Streak => (x -> bin_axis(x; unit_step = 10)) => :Bin_Streak)
     heat = Heatmap_group(pokedf,:Bin_LogOut,:Bin_Streak,:Leave)
@@ -721,71 +719,112 @@ function Leave_plots(pokedf,streakdf; grouping = nothing, model_plt = nothing, f
     HDiff = Heatmap_plot(diff,:Bin_LogOut,:Bin_Streak,:Leave; colorlims = (-1, 1), colorscheme = :BrBG_11)
     title!(HDiff, "$(cases[2]) - $(cases[1])")
     ylabel!(HDiff,"")
-    return PLeave, NPokes, Model, HExp, HCon, HDiff
+    streakdf.LogDuration = log10.(streakdf.Trial_duration)
+    MedianSurvival = mediansurvival_analysis(streakdf,:LogDuration, grouping)
+    SurvivalAn = function_analysis(streakdf,:LogDuration, survivalrate_algorythm; grouping = grouping)
+    plot!(SurvivalAn, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
+    HazardAn = function_analysis(streakdf,:LogDuration, hazardrate_algorythm, grouping = grouping)
+    plot!(HazardAn, xlabel = "Time (log10 s)", ylabel = "Hazard rate", label = "")
+    return PLeave, LeavexTrial, Model, HExp, HCon, HDiff, MedianSurvival, SurvivalAn, HazardAn
 end
 
-function leave_modelplt(pokedf,grouping)
-    transform!(pokedf, [:Streak, :Out, :LogOut] .=> zscore)
-    verb = @eval @formula(Leave ~ 1 + Streak_zscore * $grouping + LogOut_zscore * $grouping +  (1|MouseID))
-    LeaveModel = fit(MixedModel,verb, pokedf, Bernoulli())
-    rng = MersenneTwister(1234321)
-    samp1 = parametricbootstrap(rng,100,LeaveModel)
-    sampdf = DataFrame(samp1.allpars)
-    bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
-    bootdf.coef = push!(coef(LeaveModel), mean(ranef(LeaveModel)[1]))
-    cases = levels(pokedf[:,grouping])
-    bootdf.variable = ["Intercept", "Trial", "$grouping: $(cases[2])", "Poke-time",
-        "Trial & $grouping: $(cases[2])",
-        "Poke-time & $grouping: $(cases[2])", "MouseID"]
-    transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
-    Model = @df bootdf[1:end-1,:] scatter(:coef ,1:nrow(bootdf)-1,
+function leave_modelplt(bootdf)
+    Model = @df bootdf scatter(:coef ,1:nrow(bootdf),
         xerror = :err, xlabel = "Coefficient estimate",
         yticks = (1:nrow(bootdf), :variable), legend = false)
     vline!([0], linecolor = :red, legend = false)
     return Model
 end
 
-############## single animal plotting
-function bymouse_logtimehist(df,var; grouping = nothing, digits = 1)
-    df0 = copy(df)
-    if isnothing(grouping)
-        grouping = check_group(df0)
-    end
-    cases = levels(df0[:,grouping])
-    an_title = Symbol("Log_"*string(var))
-    transform!(df0, var => (t -> round.(log10.(t); digits = digits)) => an_title)
-    plot_vec = []
-    combine(groupby(df0,:MouseID)) do dd
-        c = dd[1,grouping] == cases[1] ? get_color_palette(:auto,plot_color(:white))[1] : get_color_palette(:auto,plot_color(:white))[2]
-        m = dd.MouseID[1]
-        dd2 = dropmissing(dd)
-        dens = @df dd2 density(cols(an_title), linecolor = c,
-            title = string(grouping), xlabel = string(an_title), label = "")
-        gmix1 = GMM(2,dd2.Log_PostInterpoke)
-        gmix2 = GMM(3,dd2.Log_PostInterpoke)
-        choice = mixture_Likelyhood_Ratio_test(MixtureModel(gmix1),MixtureModel(gmix2),dd2[:,an_title]) < 0.05 ? gmix2 : gmix1
-        vline!(dens, means(choice), linecolor = :black, linestyle = :dash, label = "")
-        annotate!(-2,0.3,Plots.text(join(string.(round.(means(choice),digits = 3)),"<br>"), 10))
-        hist = @df dd2 histogram(cols(an_title), bins = 100,
-            linecolor = c, fillcolor = c,
-            label = :MouseID[1], title = string(grouping), xlabel = string(an_title))
-        plt = plot(dens,hist,size = (1200,600))
-        push!(plot_vec, plt)
-        pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/DarioDevelopment"
-        pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/DarioDevelopment"
-        if ispath(pathMac)
-            path = pathMac
-        elseif ispath(pathLin)
-            path = pathLin
-        else
-            error("unknown path")
-        end
-        savingfolder = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime", string(an_title))
-        !ispath(savingfolder) && mkdir(savingfolder)
-        savefig(plt,joinpath(savingfolder,m*".png"))
-
-        # dd2 = combine(grouby(dd,an_title), nrow => :Count)
-        # hist = @df dd2 bar(cols(an_title), :Count)
-    end
-    return plot_vec
+function bootstrapdf(df, mdl; grouping = nothing)
+    rng = MersenneTwister(1234321)
+    samp1 = parametricbootstrap(rng,100,mdl)
+    sampdf = DataFrame(samp1.allpars)
+    bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
+    filter!(r -> ismissing(r.group), bootdf)
+    bootdf.coef = coef(mdl)
+    isnothing(grouping) && (grouping = check_group(df))
+    cases = levels(df[:,grouping])
+    bootdf.variable = ["Intercept", "Trial", "$grouping: $(cases[2])", "Poke-time",
+        "Trial & $grouping: $(cases[2])",
+        "Poke-time & $grouping: $(cases[2])"]
+    transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
+    return bootdf
 end
+
+function mediansurvival_analysis(streakdf,variable, grouping)
+    dd1 = combine(groupby(streakdf,[:MouseID,grouping]), variable => median => variable)
+    dd2 = combine(groupby(dd1,grouping), variable => (t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
+    @df dd2 scatter(string.(cols(grouping)), :Mean, yerror = :Sem, xlims = (-0.25,2.25),
+        xlabel = "Group", ylabel = "Median survival time", label = "")
+end
+
+function survivalrate_algorythm(variable; step = 0.05, xaxis = nothing)
+    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
+    survival = 1 .- ecdf(variable).(xaxis)
+    return (Xaxis = collect(xaxis), fy = survival)
+end
+
+function hazardrate_algorythm(variable; step = 0.05, xaxis = nothing)
+    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
+    survival = 1 .- ecdf(variable).(xaxis)
+    hazard = -pushfirst!(diff(survival),0)./survival
+    return (Xaxis = collect(xaxis), fy = hazard)
+end
+
+function function_analysis(streakdf,variable, f; grouping = nothing, step =0.05)
+    subgroups = isnothing(grouping) ? [:MouseID] : vcat(:MouseID,grouping)
+    xaxis = range(extrema(streakdf[:, variable])..., step = step)
+    dd1 = combine(groupby(streakdf,subgroups), variable => (t-> f(t,xaxis = xaxis)) => AsTable)
+    rename!(dd1, Dict(:Xaxis => variable))
+    sort!(dd1,[:MouseID,variable])
+    dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
+    sort!(dd2,variable)
+    @df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping))
+        # xlabel = "Time (lo10 s)", ylabel = "Survival", label = "")
+end
+
+# ############## single animal plotting
+# function bymouse_logtimehist(df,var; grouping = nothing, digits = 1)
+#     df0 = copy(df)
+#     if isnothing(grouping)
+#         grouping = check_group(df0)
+#     end
+#     cases = levels(df0[:,grouping])
+#     an_title = Symbol("Log_"*string(var))
+#     transform!(df0, var => (t -> round.(log10.(t); digits = digits)) => an_title)
+#     plot_vec = []
+#     combine(groupby(df0,:MouseID)) do dd
+#         c = dd[1,grouping] == cases[1] ? get_color_palette(:auto,plot_color(:white))[1] : get_color_palette(:auto,plot_color(:white))[2]
+#         m = dd.MouseID[1]
+#         dd2 = dropmissing(dd)
+#         dens = @df dd2 density(cols(an_title), linecolor = c,
+#             title = string(grouping), xlabel = string(an_title), label = "")
+#         gmix1 = GMM(2,dd2.Log_PostInterpoke)
+#         gmix2 = GMM(3,dd2.Log_PostInterpoke)
+#         choice = mixture_Likelyhood_Ratio_test(MixtureModel(gmix1),MixtureModel(gmix2),dd2[:,an_title]) < 0.05 ? gmix2 : gmix1
+#         vline!(dens, means(choice), linecolor = :black, linestyle = :dash, label = "")
+#         annotate!(-2,0.3,Plots.text(join(string.(round.(means(choice),digits = 3)),"<br>"), 10))
+#         hist = @df dd2 histogram(cols(an_title), bins = 100,
+#             linecolor = c, fillcolor = c,
+#             label = :MouseID[1], title = string(grouping), xlabel = string(an_title))
+#         plt = plot(dens,hist,size = (1200,600))
+#         push!(plot_vec, plt)
+#         pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/DarioDevelopment"
+#         pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/DarioDevelopment"
+#         if ispath(pathMac)
+#             path = pathMac
+#         elseif ispath(pathLin)
+#             path = pathLin
+#         else
+#             error("unknown path")
+#         end
+#         savingfolder = joinpath(replace(path,basename(path)=>""),"Development_Figures","DistTime", string(an_title))
+#         !ispath(savingfolder) && mkdir(savingfolder)
+#         savefig(plt,joinpath(savingfolder,m*".png"))
+#
+#         # dd2 = combine(grouby(dd,an_title), nrow => :Count)
+#         # hist = @df dd2 bar(cols(an_title), :Count)
+#     end
+#     return plot_vec
+# end

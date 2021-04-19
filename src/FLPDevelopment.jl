@@ -2,7 +2,7 @@ module FLPDevelopment
 
 using Reexport
 @reexport using FLPprocess, DataFrames, CSV, Dates, CategoricalArrays
-@reexport using StatsBase, HypothesisTests, Bootstrap, Optim, GLM, MixedModels, Random, GaussianMixtures
+@reexport using StatsBase, HypothesisTests, Bootstrap, Optim, GLM, MixedModels, Random, Survival#GaussianMixtures
 @reexport using Distributions, KernelDensity, StatsPlots, StatsPlots.PlotMeasures
 import Statistics: median, std
 
@@ -20,6 +20,7 @@ export Likelyhood_Ratio_test, AIC_test, AICc_test
 export median, std, kde, dvAnalysis, DoubleAnalysis
 export fraction_true, bootstrap_mean, frequency, dropnan, dropnan!, bin_axis, reallignpokes, rm_interpokes, reprocess_streaks, filter_pokestreak
 export individual_summary, summary_xy, group_kde, group_cdf, group_frequency, group_summary, dvplot, check_distribution, check_distributions
+export mediansurvival_analysis, survivalrate_algorythm, hazardrate_algorythm, function_analysis
 export Heatmap_group, Heatmap_plot, Heatmap_difference, Leave_plots
 export poke_plot!, maintitle!
 export mixture_gamma, mixture_gamma_weighted, mixture_exp, mixture_exp_weighted, mixture_gamma_exp

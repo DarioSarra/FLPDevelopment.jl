@@ -62,6 +62,14 @@ verbCas1 = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Virus + 
 verbCas2 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore * Virus +  (1|MouseID));
 verbCas3 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Virus + (1|MouseID));
 
+verbCas4 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
+LeaveCas4 = fit(MixedModel,verbCas4, Cas_p, Bernoulli())
+verbCas5 = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Virus +  (1+Streak_zscore+LogOut_zscore|MouseID));
+LeaveCas5 = fit(MixedModel,verbCas5, Cas_p, Bernoulli())
+MixedModels.likelihoodratiotest(LeaveCas0,LeaveCas4)
+MixedModels.likelihoodratiotest(LeaveCas4,LeaveCas5)
+
+
 # Group Effect
 LeaveCas1 = fit(MixedModel,verbCas1, Cas_p, Bernoulli())
 LeaveCas2 = fit(MixedModel,verbCas2, Cas_p, Bernoulli())
@@ -94,6 +102,14 @@ verbAge1 = @formula(Leave ~ 1 + Streak_zscore * Age + LogOut_zscore * Age +  (1|
 verbAge2 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore * Age +  (1|MouseID));
 verbAge3 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Age + (1|MouseID));
 
+verbAge4 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
+LeaveAge4 = fit(MixedModel,verbAge4, Age_p, Bernoulli())
+verbAge5 = @formula(Leave ~ 1 + Streak_zscore * Age + LogOut_zscore * Age +  (1+Streak_zscore+LogOut_zscore|MouseID));
+LeaveAge5 = fit(MixedModel,verbAge5, Age_p, Bernoulli())
+
+MixedModels.likelihoodratiotest(LeaveAge0,LeaveAge4)
+MixedModels.likelihoodratiotest(LeaveAge4,LeaveAge5)
+
 # Group Effect
 LeaveAge1 = fit(MixedModel,verbAge1, Age_p, Bernoulli())
 LeaveAge2 = fit(MixedModel,verbAge2, Age_p, Bernoulli())
@@ -111,12 +127,37 @@ Age_p.M3_Leave = predict(LeaveAge3)
 ## Figures
 Age_p.LogOut = log10.(Age_p.Out)
 Age_s.LogDuration = log10.(Age_s.Trial_duration)
-PLeave_Age, NPokes_Age, Model_Age, HExp_Age, HCon_Age, HDiff_Age = Leave_plots(Age_p, Age_s)#; model_plt = Model_Age, filtering = true)
-Age_top = plot(PLeave_Age, NPokes_Age, Model_Age, layout = (1,3), size = (1850,600))
-Age_bot = plot(HExp_Age, HCon_Age, HDiff_Age, layout = (1,3), size = (1850,600))
-savefig(Age_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-1-DurCorrelations.html"))
-savefig(Age_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-3-Heatmaps.html"))
+LeaveModel = LeaveAge5
+Age_bdf = FLPDevelopment.bootstrapdf(Age_p,LeaveAge5)
+PLeave_Age, LeavexTrial_Age, Model_Age,
+    HExp_Age, HCon_Age, HDiff_Age,
+    MedianSurvival_Age, Survival_Age, Hazard_Age = Leave_plots(Age_p, Age_s, Age_bdf, filtering = true)
+Age_top = plot(PLeave_Age, LeavexTrial_Age, Model_Age, layout = (1,3), size = (1850,600))
+Age_mid = plot(HExp_Age, HCon_Age, HDiff_Age, layout = (1,3), size = (1850,600))
+Age_bot = plot(MedianSurvival_Age, Survival_Age, Hazard_Age, layout = (1,3), size = (1850,600))
+savefig(Age_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-1-Correlations.html"))
+savefig(Age_mid,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-2-Heatmaps.html"))
+savefig(Age_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-3-Survival.html"))
+Age_s.LeaveEvent = EventTime.(Age_s.LogDuration,trues(nrow(Age_s)))
+Age_m1 = Survival.coxph(@formula(LeaveEvent ~ Streak), Age_s)
+Age_m2 = Survival.coxph(@formula(LeaveEvent ~ Streak + Age), Age_s)
+##
+Cas_p.LogOut = log10.(Cas_p.Out)
+Cas_s.LogDuration = log10.(Cas_s.Trial_duration)
+Cas_bdf = FLPDevelopment.bootstrapdf(Cas_p,LeaveCas5)
+PLeave_Cas, LeavexTrial_Cas, Model_Cas,
+    HExp_Cas, HCon_Cas, HDiff_Cas,
+    MedianSurvival_Cas, Survival_Cas, Hazard_Cas = Leave_plots(Cas_p, Cas_s, Cas_bdf; filtering = true)
+Cas_top = plot(PLeave_Cas, LeavexTrial_Cas, Model_Cas, layout = (1,3), size = (1850,600))
+Cas_mid = plot(HExp_Cas, HCon_Cas, HDiff_Cas, layout = (1,3), size = (1850,600))
+Cas_bot = plot(MedianSurvival_Cas, Survival_Cas, Hazard_Cas, layout = (1,3), size = (1850,600))
 
+savefig(Cas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-1-Correlations.html"))
+savefig(Cas_mid,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-2-Heatmaps.html"))
+savefig(Cas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-3-Survival.html"))
+Cas_s.LeaveEvent = EventTime.(Cas_s.LogDuration,trues(nrow(Cas_s)))
+Cas_m1 = Survival.coxph(@formula(LeaveEvent ~ Streak), Cas_s)
+Cas_m2 = Survival.coxph(@formula(LeaveEvent ~ Streak + Virus), Cas_s)
 ##
 FAge_p, FAge_s = filter_pokestreak(Age_p)
 FAge_p.LogOut = log10.(FAge_p.Out)
@@ -127,13 +168,6 @@ FAge_bot = plot(HExp_FAge, HCon_FAge, HDiff_FAge, layout = (1,3), size = (1850,6
 savefig(FAge_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-4-Filt-DurCorrelations.html"))
 savefig(FAge_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Age-5-Filt-FullHeatmaps.html"))
 ##
-Cas_p.LogOut = log10.(Cas_p.Out)
-Cas_s.LogDuration = log10.(Cas_s.Trial_duration)
-PLeave_Cas, NPokes_Cas, Model_Cas, HExp_Cas, HCon_Cas, HDiff_Cas = Leave_plots(Cas_p, Cas_s; model_plt = Model_Cas, filtering = true)
-Cas_top = plot(PLeave_Cas, NPokes_Cas, Model_Cas, layout = (1,3), size = (1850,600))
-Cas_bot = plot(HExp_Cas, HCon_Cas, HDiff_Cas, layout = (1,3), size = (1850,600))
-savefig(Cas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-1-DurationCorrelations.html"))
-savefig(Cas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-3-Heatmaps.html"))
 ##
 FCas_p, FCas_s = filter_pokestreak(Cas_p)
 FCas_p.LogOut = log10.(FCas_p.Out)
@@ -143,28 +177,29 @@ FCas_top = plot(PLeave_FCas, NPokes_FCas, Model_FCas, layout = (1,3), size = (18
 FCas_bot = plot(HExp_FCas, HCon_FCas, HDiff_FCas, layout = (1,3), size = (1850,600))
 savefig(FCas_top,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-4-Filt-DurCorrelations.html"))
 savefig(FCas_bot,joinpath(replace(path,basename(path)=>""),"Development_Figures","Leaving","Cas-5-Filt-FullHeatmaps.html"))
-#### Median Survival Time
-df = Cas_s
-grouping = FLPDevelopment.check_group(df)
-variable = :LogDuration
-dd1 = combine(groupby(Cas_s,[:MouseID,grouping]), variable => median => variable)
-dd2 = combine(groupby(dd1,grouping), variable => (t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
-@df dd2 scatter(string.(cols(grouping)), :Mean, yerror = :Sem)
-## Survival rate (1-ecdf)
-xaxis = range(extrema(df[:,variable])..., step =0.05)
-dd1 = combine(groupby(Cas_s,[:MouseID,grouping]), variable =>
-    (t -> (variable = xaxis, Survival = 1 .- ecdf(t).(xaxis))) => [variable, :Survival])
-sort!(dd1,[:MouseID,variable])
-dd2 = combine(groupby(dd1,[grouping,variable]), :Survival =>(t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
-@df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping))
-## Hazard
-xaxis = range(extrema(df[:,variable])..., step =0.05)
-dd1 = combine(groupby(Cas_s,[:MouseID,grouping]), variable =>
-    (t -> (variable = xaxis, Survival = 1 .- ecdf(t).(xaxis))) => [variable, :Survival])
-sort!(dd1,[:MouseID,variable,:Survival])
-transform!(dd1, :Survival => (s -> -pushfirst!(diff(s),0)./s) => :Hazard)
-dd1.Hazard[dd1.Hazard .== Inf].= 1
-filter!(:Hazard => !isnan, dd1)
-dd2 = combine(groupby(dd1,[grouping,variable]), :Hazard =>(t-> (Mean = mean(t),Sem = sem(t), Count = length(t))) => AsTable)
-filter!(r -> r.Sem !=0 && r.Count >= 3 && r.Mean >= 0, dd2)
-@df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping))
+######################################## Survival Analysis
+##
+Age_s.LogDuration = log10.(Age_s.Trial_duration)
+Age_MedianSurvival = mediansurvival_analysis(Age_s,:LogDuration, :Age)
+Age_Survival = function_analysis(Age_s,:LogDuration, survivalrate_algorythm; grouping = :Age)
+plot!(Age_Survival, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
+Age_Hazard = function_analysis(Age_s,:LogDuration, hazardrate_algorythm, grouping = :Age)
+plot!(Age_Hazard, xlabel = "Time (log10 s)", ylabel = "Hazard rate")
+plot(Age_MedianSurvival, Age_Survival,Age_Hazard)
+Age_s.LeaveEvent = EventTime.(Age_s.LogDuration,trues(nrow(Age_s)))
+Age_m1 = Survival.coxph(@formula(LeaveEvent ~ Streak), Age_s)
+Age_m2 = Survival.coxph(@formula(LeaveEvent ~ Streak + Age), Age_s)
+##
+Cas_s.LogDuration = log10.(Cas_s.Trial_duration)
+Cas_MedianSurvival = mediansurvival_analysis(Cas_s,:LogDuration, :Virus)
+Cas_Survival = function_analysis(Cas_s,:LogDuration, survivalrate_algorythm; grouping = :Virus)
+Cas_Hazard = function_analysis(Cas_s,:LogDuration, hazardrate_algorythm, grouping = :Virus)
+plot(Cas_MedianSurvival, Cas_Survival, Cas_Hazard)
+Cas_s.LeaveEvent = EventTime.(Cas_s.LogDuration,trues(nrow(Cas_s)))
+Cas_m1 = Survival.coxph(@formula(LeaveEvent ~ Streak), Cas_s)
+Cas_m2 = Survival.coxph(@formula(LeaveEvent ~ Streak + Virus), Cas_s)
+##
+fit(KaplanMeier, Cas_s.LogDuration, trues(nrow(Cas_s)))
+EventTime.(Cas_s.Streak)
+fit(CoxModel,EventTime.(Cas_s.Streak), Cas_s.LogDuration)
+)
