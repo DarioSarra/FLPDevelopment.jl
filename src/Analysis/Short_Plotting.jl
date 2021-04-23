@@ -34,7 +34,7 @@ age_al_lim = quantile(Age_s.AfterLast,0.95)
 age_df = filter(r->
     # r.Streak <=80
     # r.Performance >25 &&
-    r.Trial_duration < 30 &&
+    r.Trial_Duration < 30 &&
     r.AfterLast <= age_al_lim &&
     r.Stop/60 < 50
     ,Age_s)
@@ -56,7 +56,7 @@ cas_al_lim = quantile(Cas_s.AfterLast,0.95)
 cas_df = filter(r->
     # r.Streak <=80 &&
     # r.Performance >25 &&
-    r.Trial_duration < 30 &&
+    r.Trial_Duration < 30 &&
     r.AfterLast < cas_al_lim &&
     r.Stop/60 <= 50  &&
     r.Gen == "Rbp4-cre"

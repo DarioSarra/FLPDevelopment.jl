@@ -187,6 +187,87 @@ function group_summary(df1,xvar,yvar; normality = true)
     return df2
 end
 
+function mean_sem_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var)
+    df2 = combine(groupby(df1,grouping)) do dd
+        m = mean(dd[:,var])
+        s = sem(dd[:,var])
+        (Central = m, ERR = (s,s))
+    end
+    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
+        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
+        xaxis = :xaxis
+    else
+        xaxis = grouping
+    end
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(xaxis)),
+        legend = false)
+    return plt, df2
+end
+
+"""
+    `median_ci_scatter(df, grouping, var)`
+    A - calculate the mean of the var for each animal using individual summary
+    B - calculate the mode and ci for each group using group_summary
+"""
+
+function median_ci_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var)
+    df2 = group_summary(df1, grouping, var; normality = false)
+    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
+        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
+        xaxis = :xaxis
+    else
+        xaxis = grouping
+    end
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(xaxis)),
+        legend = false)
+    return plt, df2, df1
+end
+
+function mean_ci_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var)
+    df2 = group_summary(df1, grouping, var; normality = true)
+    @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(grouping)),
+        legend = false)
+end
+"""
+    `incorrect_fraction_scatter(df, grouping, var)`
+    A - calculate the fraction of incorrect trials excluding wrong starting trial using individual summary
+    B - calculate the mode and ci for each group using group_summary
+"""
+
+function incorrect_fraction_scatter(df, grouping, var)
+    df1 = individual_summary(df, grouping, var; summary = incorrect_fraction)
+    # df2 = combine(groupby(df1,grouping)) do dd
+    #     m = mean(dd[:,var])
+    #     s = sem(dd[:,var])
+    #     (Central = m, ERR = (s,s))
+    # end
+    df2 = group_summary(df1, grouping, var; normality = false)
+    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
+        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
+        xaxis = :xaxis
+    else
+        xaxis = grouping
+    end
+    plt = @df df2 scatter(1:nrow(df2),:Central,
+        yerror = :ERR,
+        xlims = (0.5, nrow(df2) + 0.5),
+        xticks = (1:nrow(df2),cols(xaxis)),
+        legend = false)
+    return plt, df2, df1
+end
+
 function test_difference(df1,xvar,yvar;normality = true)
     cases = union(df1[:,xvar])
     case1 = df1[df1[:,xvar] .== cases[1], yvar]
@@ -249,24 +330,7 @@ function dvplot(df1,df2,xvar,yvar,test; yspan = :auto, ystep = :auto, showmice =
     return plt
 end
 
-function check_cd9(df,xvar)
-    p = plot(; label = false)
-    for m in union(df.MouseID)
-        lc = m == "CD09" ? :red : :grey
-        @df filter(r -> r.MouseID == m,df) density!(cols(xvar), linecolor = lc,label = false)
-    end
-    p
-end
 
-function check_cd9(df,xvar, yvar)
-    p = plot(; label = false)
-    for m in union(df.MouseID)
-        lc = m == "CD09" ? :red : :grey
-        @df filter(r -> r.MouseID == m,df) scatter!(cols(xvar), cols(yvar), markercolor = lc,
-        label = false, markersize = 2)
-    end
-    p
-end
 ## check distributions
 function check_distribution(df, var; grouping = nothing, summary_opt = :MEAN)
     if isnothing(grouping)
@@ -313,7 +377,7 @@ function check_distributions(df_s,df_p; grouping = nothing, summary_opt = :MEAN)
     #Interpoke
     dIP, tIP,sIP, bIP = check_distribution(df_p,:PreInterpoke; summary_opt = summary_opt)
     #Duration
-    dDT, tDT, sDT, bDT = check_distribution(df_s,:Trial_duration; summary_opt = summary_opt)
+    dDT, tDT, sDT, bDT = check_distribution(df_s,:Trial_Duration; summary_opt = summary_opt)
 
     p1 = plot(tAF, sAF, bAF,
         tErr, sErr, bErr,
@@ -352,75 +416,6 @@ function cdf_plot(df, grouping, var; estimated = false)
     filter!(r -> !isnan(r.Sem), df1)
     @df df1 plot(:Xaxis, :Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto,
      legend=:bottomright, xlabel = String(var), ylabel = "Cumulative distribution")
-end
-
-function mean_sem_scatter(df, grouping, var)
-    df1 = individual_summary(df, grouping, var)
-    df2 = combine(groupby(df1,grouping)) do dd
-        m = mean(dd[:,var])
-        s = sem(dd[:,var])
-        (Central = m, ERR = (s,s))
-    end
-    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
-        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
-        xaxis = :xaxis
-    else
-        xaxis = grouping
-    end
-    plt = @df df2 scatter(1:nrow(df2),:Central,
-        yerror = :ERR,
-        xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(xaxis)),
-        legend = false)
-    return plt, df2
-end
-
-function mode_ci_scatter(df, grouping, var)
-    df1 = individual_summary(df, grouping, var)
-    df2 = group_summary(df1, grouping, var; normality = false)
-    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
-        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
-        xaxis = :xaxis
-    else
-        xaxis = :grouping
-    end
-    plt = @df df2 scatter(1:nrow(df2),:Central,
-        yerror = :ERR,
-        xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(xaxis)),
-        legend = false)
-    return plt, df2
-end
-
-function mean_ci_scatter(df, grouping, var)
-    df1 = individual_summary(df, grouping, var)
-    df2 = group_summary(df1, grouping, var; normality = true)
-    @df df2 scatter(1:nrow(df2),:Central,
-        yerror = :ERR,
-        xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(grouping)),
-        legend = false)
-end
-
-function incorrect_fraction_scatter(df, grouping, var)
-    df1 = individual_summary(df, grouping, var; summary = incorrect_fraction)
-    df2 = combine(groupby(df1,grouping)) do dd
-        m = mean(dd[:,var])
-        s = sem(dd[:,var])
-        (Central = m, ERR = (s,s))
-    end
-    if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
-        df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
-        xaxis = :xaxis
-    else
-        xaxis = grouping
-    end
-    plt = @df df2 scatter(1:nrow(df2),:Central,
-        yerror = :ERR,
-        xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(xaxis)),
-        legend = false)
-    return plt, df2
 end
 
 function var_plots(df,var; grouping = grouping)
@@ -507,7 +502,7 @@ function duration_analysis(df, group, variable)
 end
 
 function all_duration_analysis(poke, streak, group)
-    trial_d, trial_s = duration_analysis(streak,group, :Trial_duration)
+    trial_d, trial_s = duration_analysis(streak,group, :Trial_Duration)
     pokep = filter(r -> r.PreInterpoke > 0, poke)
     inter_d, inter_s = duration_analysis(pokep,group, :PreInterpoke)
     poke_d, poke_s = duration_analysis(pokep,group, :PokeDur)
@@ -686,8 +681,96 @@ function Heatmap_plot(dfheat, x, y, z; colorlims = (0,1), colorscheme = Heat_pal
         color = colorscheme)#:deep)
 end
 
-Heat_pal1 = cgrad([RGB(218/255, 238/255, 235/255), RGB(57/255, 153/255, 145/255), RGB(0/255, 66/255, 55/255)])
-Heat_pal2 = :BrBg_11
+# Heat_pal1 = cgrad([RGB(218/255, 238/255, 235/255), RGB(57/255, 153/255, 145/255), RGB(0/255, 66/255, 55/255)])
+# Heat_pal2 = :BrBg_11
+Heat_pal1 = cgrad([RGB(199/255, 234/255, 228/255),
+    RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255), RGB(1/255, 102/255, 94/255)])
+Heat_pal2 = cgrad([RGB(140/255, 81/255, 11/255), RGB(191/255, 131/255, 45/255), RGB(223/255, 194/255, 126/255),
+    RGB(247/255, 233/255, 196/255),RGB(245/255, 245/255, 245/255), RGB(199/255, 234/255, 228/255),
+    RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255), RGB(1/255, 102/255, 94/255)])
+Heat_pal3 = cgrad([RGB(140/255, 81/255, 11/255), RGB(223/255, 194/255, 126/255),
+    RGB(128/255, 206/255, 193/255),  RGB(1/255, 102/255, 94/255)])
+
+function HeatMapsLeave(pokedf; filtering = false, grouping = nothing)
+    if isnothing(grouping)
+        grouping = check_group(pokedf)
+    end
+    cases = levels(pokedf[:,grouping])
+    transform!(pokedf, :LogOut => (x -> bin_axis(x; length = 30)) => :Bin_LogOut)
+    transform!(pokedf, :Streak => (x -> bin_axis(x; unit_step = 10)) => :Bin_Streak)
+    heat = Heatmap_group(pokedf,:Bin_LogOut,:Bin_Streak,:Leave)
+    argument = ([:Bin_Streak,:Bin_LogOut] => (s,o) ->(11<= s <= 61 && 0.1 <= o <= 2.1))
+    filtering && filter!(argument, heat)
+    heat_exp = filter(grouping => t -> t == cases[2], heat)
+    HExp = Heatmap_plot(heat_exp,:Bin_LogOut,:Bin_Streak,:Leave)
+    title!(HExp, cases[2])
+    heat_con = filter(grouping => t -> t == cases[1], heat)
+    HCon = Heatmap_plot(heat_con,:Bin_LogOut,:Bin_Streak,:Leave)
+    title!(HCon, cases[1])
+    ylabel!(HCon,"")
+    diff = Heatmap_difference(heat,:Bin_LogOut,:Bin_Streak,:Leave; grouping = grouping, adjust = :trim)
+    HDiff = Heatmap_plot(diff,:Bin_LogOut,:Bin_Streak,:Leave; colorlims = (-1, 1), colorscheme = :BrBG_11)
+    title!(HDiff, "$(cases[2]) - $(cases[1])")
+    ylabel!(HDiff,"")
+    return HExp, HCon, HDiff
+end
+function Surface_matrix(streakdf; length = 20, trial_r = nothing, duration_r = nothing)
+    if isnothing(trial_r)
+        trial_r = range(extrema(streakdf.BinnedStreak)..., length = length)
+    end
+    if isnothing(duration_r)
+        duration_r = range(extrema(streakdf.LogDuration)..., length = length)
+    end
+    BiSurv = Matrix{Float64}(undef, 20, 20)
+    for (t_idx, t) in enumerate(trial_r)
+        for (d_idx, d) in enumerate(duration_r)
+            BiSurv[t_idx,d_idx] = sum((streakdf.LogDuration .<= d) .& (streakdf.Streak .<= t))/nrow(streakdf)
+        end
+    end
+    return 1 .- BiSurv
+end
+
+function Surface_difference(streakdf, trial_r, duration_r,grouping; length = 20)
+    cases = levels(streakdf[:,grouping])
+    surf_exp = Surface_matrix(filter(grouping => t -> t == cases[2], streakdf), trial_r = trial_r, duration_r = duration_r, length = length)
+    surf_con = Surface_matrix(filter(grouping => t -> t == cases[1], streakdf), trial_r = trial_r, duration_r = duration_r, length = length)
+    surf_diff = surf_exp - surf_con
+    return surf_exp, surf_con, surf_diff
+end
+
+function Surface_plot(trial_r,duration_r, BiSurv; title = nothing, difference = false)
+    if difference
+        col = Heat_pal2
+        lims = (-0.25,0.25)
+        bg_col = RGB(0.2, 0.2, 0.2)
+    else
+        col = Heat_pal1
+        lims = (0,1)
+    end
+    plot(trial_r,duration_r, BiSurv, st =:surface,
+        xlabel = "Trial", ylabel = "Time (log10 s)", zlabel = "Survival rate",
+        color = col, clim = lims, camera = (70,48), background_color = RGB(0.2, 0.2, 0.2),
+        title = title)
+end
+
+function BiSurvival(streakdf; length = 20, trial_r = nothing, duration_r = nothing, grouping = nothing)
+    if isnothing(grouping)
+        grouping = check_group(streakdf)
+    end
+    cases = levels(streakdf[:,grouping])
+    if isnothing(trial_r)
+        trial_r = range(extrema(streakdf.BinnedStreak)..., length = length)
+    end
+    if isnothing(duration_r)
+        duration_r = range(extrema(streakdf.LogDuration)..., length = length)
+    end
+    surf_exp, surf_con, surf_diff = Surface_difference(streakdf, trial_r, duration_r,
+        grouping; length = length)
+    SurfExp = Surface_plot(trial_r,duration_r,surf_exp; title = cases[2])
+    SurfCon = Surface_plot(trial_r,duration_r,surf_con; title = cases[1])
+    SurfDiff = Surface_plot(trial_r,duration_r,surf_diff; difference = true, title = " $(cases[2]) - $(cases[1])")
+    return SurfExp, SurfCon, SurfDiff
+end
 
 function Leave_plots(pokedf,streakdf, modeldf; grouping = nothing, filtering = false)
     grouping = check_group(pokedf)
@@ -719,7 +802,7 @@ function Leave_plots(pokedf,streakdf, modeldf; grouping = nothing, filtering = f
     HDiff = Heatmap_plot(diff,:Bin_LogOut,:Bin_Streak,:Leave; colorlims = (-1, 1), colorscheme = :BrBG_11)
     title!(HDiff, "$(cases[2]) - $(cases[1])")
     ylabel!(HDiff,"")
-    streakdf.LogDuration = log10.(streakdf.Trial_duration)
+    streakdf.LogDuration = log10.(streakdf.Trial_Duration)
     MedianSurvival = mediansurvival_analysis(streakdf,:LogDuration, grouping)
     SurvivalAn = function_analysis(streakdf,:LogDuration, survivalrate_algorythm; grouping = grouping)
     plot!(SurvivalAn, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
@@ -780,8 +863,7 @@ function function_analysis(streakdf,variable, f; grouping = nothing, step =0.05)
     sort!(dd1,[:MouseID,variable])
     dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
     sort!(dd2,variable)
-    @df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping))
-        # xlabel = "Time (lo10 s)", ylabel = "Survival", label = "")
+    @df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto)
 end
 
 # ############## single animal plotting
@@ -828,3 +910,21 @@ end
 #     end
 #     return plot_vec
 # end
+function check_cd9(df,xvar)
+    p = plot(; label = false)
+    for m in union(df.MouseID)
+        lc = m == "CD09" ? :red : :grey
+        @df filter(r -> r.MouseID == m,df) density!(cols(xvar), linecolor = lc,label = false)
+    end
+    p
+end
+
+function check_cd9(df,xvar, yvar)
+    p = plot(; label = false)
+    for m in union(df.MouseID)
+        lc = m == "CD09" ? :red : :grey
+        @df filter(r -> r.MouseID == m,df) scatter!(cols(xvar), cols(yvar), markercolor = lc,
+        label = false, markersize = 2)
+    end
+    p
+end

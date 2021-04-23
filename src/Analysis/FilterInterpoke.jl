@@ -70,7 +70,7 @@ Likelyhood_Ratio_test(AlAge0,AlAge1)
 PokingAge0 = fit(MixedModel,@formula(Poking_time ~ 1 + Streak + (1|MouseID)),FAge_s)
 PokingAge1 = fit(MixedModel,@formula(Poking_time ~ 1 + Streak + Age + (1|MouseID)),FAge_s)
 Likelyhood_Ratio_test(PokingAge0,PokingAge1)
-FAge_s[!,:PokingRatio] = FAge_s.Poking_time./FAge_s.Trial_duration
+FAge_s[!,:PokingRatio] = FAge_s.Poking_time./FAge_s.Trial_Duration
 RatioAge0 = fit(MixedModel,@formula(PokingRatio ~ 1 + Streak + (1|MouseID)),FAge_s)
 RatioAge1 = fit(MixedModel,@formula(PokingRatio ~ 1 + Streak + Age + (1|MouseID)),FAge_s)
 Likelyhood_Ratio_test(RatioAge0,RatioAge1)
@@ -88,7 +88,7 @@ Likelyhood_Ratio_test(AlCas0,AlCas1)
 PokingCas0 = fit(MixedModel,@formula(Poking_time ~ 1 + Streak + (1|MouseID)),FCas_s)
 PokingCas1 = fit(MixedModel,@formula(Poking_time ~ 1 + Streak + Virus + (1|MouseID)),FCas_s)
 Likelyhood_Ratio_test(PokingCas0,PokingCas1)
-FCas_s[!,:PokingRatio] = FCas_s.Poking_time./FCas_s.Trial_duration
+FCas_s[!,:PokingRatio] = FCas_s.Poking_time./FCas_s.Trial_Duration
 RatioCas0 = fit(MixedModel,@formula(PokingRatio ~ 1 + Streak + (1|MouseID)),FCas_s)
 RatioCas1 = fit(MixedModel,@formula(PokingRatio ~ 1 + Streak + Virus + (1|MouseID)),FCas_s)
 Likelyhood_Ratio_test(RatioCas0,RatioCas1)

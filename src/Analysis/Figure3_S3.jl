@@ -68,25 +68,25 @@ vline!([limit], line = :dash, label = "95th quantile")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","Travel_toPDF.png"))
 
 # Trial Duration
-x = Cas_s.Trial_duration#[Cas_s.Trial_duration .<= 60]
-mix_trial_duration = mixture_gamma(x)
+x = Cas_s.Trial_Duration#[Cas_s.Trial_Duration .<= 60]
+mix_Trial_Duration = mixture_gamma(x)
 interval = 0:0.2:60
-plot(interval,pdf(mix_trial_duration,interval),xlims = (0,60), label = "Convex combination",
+plot(interval,pdf(mix_Trial_Duration,interval),xlims = (0,60), label = "Convex combination",
     yrotation = 60)
 plt = twinx()
 histogram!(plt,x[x .<=60], nbins = 150, color = :grey, fillalpha = 0.3, xlims = (0,60), linewidth = 0, label = false,
     xlabel = "Trial duration")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","travelHist_PDF.png"))
 
-plot(interval,pdf(mix_trial_duration,interval),xlims = (0,60), label = "Convex combination")
-plot!(interval,pdf(mix_trial_duration.components[1],interval), xlims = (0,60), linecolor = :cyan, label = "First component")
-plot!(interval,pdf(mix_trial_duration.components[2],interval), xlims = (0,60),linecolor = :magenta, label = "Second component")
+plot(interval,pdf(mix_Trial_Duration,interval),xlims = (0,60), label = "Convex combination")
+plot!(interval,pdf(mix_Trial_Duration.components[1],interval), xlims = (0,60), linecolor = :cyan, label = "First component")
+plot!(interval,pdf(mix_Trial_Duration.components[2],interval), xlims = (0,60),linecolor = :magenta, label = "Second component")
 vline!([30], linestyle = :dot, label = "Threshold")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","MixedTravelDists.png"))
 ## Afterlast df selection
 limit_cas = quantile(collect(skipmissing(Cas_s.AfterLast)),0.95)
 cas_df = filter(r->
-    # r.Trial_duration < 30 &&
+    # r.Trial_Duration < 30 &&
     r.AfterLast < limit_cas &&
     r.Gen == "Rbp4-cre"
     ,Cas_s)
