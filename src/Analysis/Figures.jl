@@ -11,7 +11,7 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Protocol == "90/90" &&
     r.MouseID != "CD09" && # biting, see B1_CD09_2020-07-13 minute30
     r.MouseID != "RJ58" && # blind
-    # r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
+    r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
     !(r.MouseID in first_females_group) &&
     r.ProtocolSession == 1
     # r.Performance > 25 && no need because minimum is 31
@@ -29,8 +29,6 @@ end
 for df in (Cas_p, Cas_b, Cas_s)
     filter!(r -> r.Gen == "Rbp4-cre", df)
 end
-agedf = filter(r -> r.Limit, Age_s)
-casdf = filter(r -> r.Limit, Cas_s)
 # fAge_p = filter(r->r.PokeDur > 0.3 &&
 #     (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
 #     (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
@@ -49,21 +47,31 @@ casdf = filter(r -> r.Limit, Cas_s)
 #     end
 agedf[!,:BinnedStreak] = bin_axis(agedf.Streak; unit_step = 5)
 casdf[!,:BinnedStreak] = bin_axis(casdf.Streak; unit_step = 5)
-nrow(agedf)/nrow(Age_s)
-nrow(agedf)-nrow(Age_s)
-nrow(casdf)/nrow(Cas_s)
-nrow(casdf)-nrow(Cas_s)
-open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
-open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
+#=
+    Figure 1:
+        - Example Session
+        - Survival rate
+        - Model bootstrap
+        - AfterLast scatter
+        - Incorrect scatter
+=#
 ########################### Example Session Plots ######################################
 tt = filter(r -> r.MouseID == "RJ23" && 08<= r.Streak <= 52, Age_p)
 plt = plot(legend = false, xlims = (-1,16), xlabel = "Trials",
-    yaxis = false, yticks = false, ylabel = "Time (seconds)")
+    yaxis = false, ylabel = "Time (seconds)")
 for r in eachrow(tt)
     FLPDevelopment.session_plot!(plt, r)
 end
 plt
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","Session.pdf"))
+########################### Survival rate ######################################
+Age_p.LogOut = log10.(Age_p.Out)
+Age_s.LogDuration = log10.(Age_s.Trial_duration)
+open_html_table(Age_s[1:100,:])
+SurvivalAn = function_analysis(streakdf,:LogDuration, survivalrate_algorythm; grouping = grouping)
+plot!(SurvivalAn, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
+transform!(Age_p, [:Streak, :Out, :LogOut] .=> zscore)
+transform!(Age_s, :Streak .=> zscore)
 ########################### Afterlast Plots ######################################
 #calculate mean of var for each mouse over a trial's bin
 overtrialplot = FLPDevelopment.overtrial_plot(agedf, :Age, :AfterLast)
