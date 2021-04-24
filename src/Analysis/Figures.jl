@@ -57,7 +57,24 @@ end
         - AfterLast scatter
         - Incorrect scatter
 =#
+for pokedf in [Age_p, Cas_p]
+    pokedf.LogOut = log10.(pokedf.Out)
+    transform!(pokedf, [:Streak, :Out, :LogOut] .=> zscore)
+end
+for streakdf in [Age_s, Cas_s]
+    streakdf.LogDuration = log10.(streakdf.Trial_Duration)
+    streakdf.ElapsedTime = log10.(streakdf.AfterLast_Duration .+ 0.1)
+    streakdf.BinnedStreak = bin_axis(streakdf.Streak; unit_step = 4)
+    transform!(streakdf, :Streak .=> zscore)
+end
 ########################### Example Session Plots ######################################
+theme(:default)
+gr(size=(600,600),
+    tick_orientation = :out,
+    grid = false,
+    markerstrokecolor = :black,
+    thickness_scaling = 1,
+    markersize = 8)
 tt = filter(r -> r.MouseID == "RJ23" && 08<= r.Streak <= 52, Age_p)
 plt = plot(legend = false, xlims = (-1,16), xlabel = "Trials",
     yaxis = false, ylabel = "Time (seconds)")
@@ -66,26 +83,20 @@ for r in eachrow(tt)
 end
 plt
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","Session.pdf"))
-########################### Median Survival rate ######################################
-Age_s.LogDuration = log10.(Age_s.Trial_Duration)
+########################### Age Median Survival rate ######################################
 Age_MedianSurvival = mediansurvival_analysis(Age_s,:LogDuration, :Age)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","MedianRate.pdf"))
 ########################### Age Survival rate ######################################
-Age_p.LogOut = log10.(Age_p.Out)
-SurvivalAn = function_analysis(Age_s,:LogDuration, survivalrate_algorythm; grouping = :Age)
-plot!(SurvivalAn, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
+Age_SurvivalAn = function_analysis(Age_s,:LogDuration, survivalrate_algorythm; grouping = :Age)
+plot!(Age_SurvivalAn, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","SurvivalRate.pdf"))
 ########################### Leaving time over trial ######################################
-Age_s.ElapsedTime = log10.(Age_s.AfterLast_Duration .+ 0.1)
-Age_s.BinnedStreak = bin_axis(Age_s.Streak; unit_step = 4)
 Age_OverTrial_df = summary_xy(Age_s,:BinnedStreak,:LogDuration; group = :Age)
 sort!(Age_OverTrial_df,[:Age,:BinnedStreak])
 @df Age_OverTrial_df plot(string.(:BinnedStreak),:Mean, group = :Age, ribbon = :Sem,
     linecolor = :auto, xlabel = "Trial", ylabel = "Leaving time (log10 s)",size=(650,600))
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","LeavingOverTrial.pdf"))
 ########################### Age Model bootstrap ######################################
-transform!(Age_p, [:Streak, :Out, :LogOut] .=> zscore)
-transform!(Age_s, :Streak .=> zscore)
 Age_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
 Age_Basic = fit(MixedModel,Age_Basic_verb, Age_p, Bernoulli())
 Age_Full_verb = @formula(Leave ~ 1 + Streak_zscore * Age + LogOut_zscore * Age +  (1+Streak_zscore+LogOut_zscore|MouseID));
@@ -94,48 +105,6 @@ MixedModels.likelihoodratiotest(Age_Basic,Age_Full)
 Age_BootDf = bootstrapdf(Age_p, Age_Full)
 leave_modelplt(Age_BootDf)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","ModelPlot.pdf"))
-#################################################################
-#=
-    Figure S1:
-        - HeatMaps
-        - Bidimensiona Survival
-        - AfterLast scatter
-        - Incorrect scatter
-=#
-########################### Age Heatmaps ######################################
-plotlyjs(size=(600,600), tick_orientation = :out, grid = false,
-    # linecolor = :black,
-    markerstrokecolor = :black,
-    thickness_scaling = 1,
-    markersize = 8)
-Age_HExp, Age_HCon, Age_HDiff = FLPDevelopment.HeatMapsLeave(Age_p; filtering = true)
-plot(Age_HExp, Age_HCon, Age_HDiff, layout = (1,3), size = (1850,600))
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","HeatMaps.html"))
-########################### Bidimensional Survival ######################################
-trial_r = range(extrema(Age_s.BinnedStreak)..., length = 20)
-duration_r = range(extrema(Age_s.LogDuration)..., length = 20)
-BiSurv = Matrix{Float64}(undef, 20, 20)
-for (t_idx, t) in enumerate(trial_r)
-    for (d_idx, d) in enumerate(duration_r)
-        BiSurv[t_idx,d_idx] = sum((Age_s.LogDuration .<= d) .& (Age_s.Streak .<= t))/nrow(Age_s)
-    end
-end
-BiSurv = 1 .- BiSurv
-Bicheck = FLPDevelopment.Surface_matrix(Age_s)
-Bicheck - BiSurv
-plotly()
-plot(trial_r,duration_r,Bicheck, st =:surface,
-    xlabel = "Trial", ylabel = "Time (log10 s)", zlabel = "Survival rate",
-    color = FLPDevelopment.Heat_pal1, camera = (70,48))
-surf_exp, surf_con = FLPDevelopment.Surface_difference(Age_s)
-surf_diff = surf_exp - surf_con
-FLPDevelopment.Surface_plot(trial_r,duration_r, surf_diff, difference = true)
-FLPDevelopment.Surface_plot(trial_r,duration_r,surf_exp)
-c = FLPDevelopment.BiSurvival(Age_s)
-c[1]
-c[2]
-c[3]
-
 ########################### Age AfterLast scatter ######################################
 Age_Af = FLPDevelopment.median_ci_scatter(Age_s, :Age, :AfterLast)
 Age_Af_df = Age_Af[3]
@@ -144,9 +113,10 @@ Age_Af_test = MannWhitneyUTest(filter(r -> r.Age == cases[2], Age_Af_df).AfterLa
     filter(r -> r.Age == cases[1], Age_Af_df).AfterLast)
 Age_Af_efect = Age_Af_test.U/(Age_Af_test.nx * Age_Af_test.ny)
 Age_Af_plt = Age_Af[1]
-ylabel!("Mode consecutive failures")
+ylabel!("Median consecutive failures")
 xlabel!("Group")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AF_test.pdf"))
+FLPDevelopment.annotate_pvalue!(Age_Af_plt,3.3,0.1,"Mann-Whitney U test, p = $(round(pvalue(Age_Af_test), digits = 2))")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","AF_test.pdf"))
 ########################### Age Incorrect scatter ######################################
 Age_Inc = FLPDevelopment.incorrect_fraction_scatter(Age_s, :Age, :IncorrectLeave)
 Age_Inc_df = Age_Inc[3]
@@ -157,7 +127,52 @@ Age_Inc_efect = Age_Inc_test.U/(Age_Inc_test.nx * Age_Inc_test.ny)
 Age_Inc_plt = Age_Inc[1]
 ylabel!("Fraction of premature leaving")
 xlabel!("Group")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","Incorrect_test.pdf"))
+FLPDevelopment.annotate_pvalue!(Age_Inc_plt,0.57,0.02,"Mann-Whitney U test, p = $(round(pvalue(Age_Inc_test), digits = 2))")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","Incorrect_test.pdf"))
+########################### Age Heatmaps ######################################
+plotlyjs(size=(600,600), tick_orientation = :out, grid = false,
+    # linecolor = :black,
+    markerstrokecolor = :black,
+    thickness_scaling = 1,
+    markersize = 8)
+Age_HExp, Age_HCon, Age_HDiff = FLPDevelopment.HeatMapsLeave(Age_p; filtering = true)
+plot(Age_HExp, Age_HCon, Age_HDiff, layout = (1,3), size = (1850,600))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","HeatMaps.html"))
+########################### Age Bidimensional Survival ######################################
+theme(:sand)
+plotlyjs(size=(600,600), tick_orientation = :out, grid = false,
+    # background_color = :auto,
+    markerstrokecolor = :black,
+    thickness_scaling = 1,
+    markersize = 8)
+Age_BSurvExp, Age_BSurvCon, Age_BSurvDiff = FLPDevelopment.BiSurvival(Age_s)
+Age_BSurvExp
+Age_BSurvCon
+Age_BSurvDiff
+savefig(Age_BSurvExp,joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","BiSurvExp.html"))
+savefig(Age_BSurvCon,joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","BiSurvCon.html"))
+savefig(Age_BSurvDiff,joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","BiSurvDiff.html"))
+
+########################### Cas Median Survival rate ######################################
+theme(:default)
+gr(size=(600,600),
+    tick_orientation = :out,
+    grid = false,
+    markerstrokecolor = :black,
+    thickness_scaling = 1,
+    markersize = 8)
+Cas_MedianSurvival = mediansurvival_analysis(Cas_s,:LogDuration, :Virus)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","MedianRate.pdf"))
+########################### Cas Survival rate ######################################
+Cas_SurvivalAn = function_analysis(Cas_s,:LogDuration, survivalrate_algorythm; grouping = :Virus)
+plot!(Cas_SurvivalAn, xlabel = "Time (log10 s)", ylabel = "Survival rate", label = "")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","SurvivalRate.pdf"))
+########################### Leaving time over trial ######################################
+Cas_OverTrial_df = summary_xy(Cas_s,:BinnedStreak,:LogDuration; group = :Virus)
+sort!(Cas_OverTrial_df,[:Virus,:BinnedStreak])
+@df Cas_OverTrial_df plot(string.(:BinnedStreak),:Mean, group = :Virus, ribbon = :Sem,
+    linecolor = :auto, xlabel = "Trial", ylabel = "Leaving time (log10 s)",size=(650,600))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","LeavingOverTrial.pdf"))
 ########################### Cas Model bootstrap ######################################
 Cas_p.LogOut = log10.(Cas_p.Out)
 transform!(Cas_p, [:Streak, :Out, :LogOut] .=> zscore)
@@ -168,6 +183,67 @@ Cas_Full_verb = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Vir
 Cas_Full = fit(MixedModel,Cas_Full_verb, Cas_p, Bernoulli())
 MixedModels.likelihoodratiotest(Cas_Basic,Cas_Full)
 Cas_BootDf = bootstrapdf(Cas_p, Cas_Full)
+leave_modelplt(Cas_BootDf)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","ModelPlot.pdf"))
+########################### Cas AfterLast scatter ######################################
+Cas_Af = FLPDevelopment.median_ci_scatter(Cas_s, :Virus, :AfterLast)
+Cas_Af_df = Cas_Af[3]
+cases = union(Cas_s.Virus)
+Cas_Af_test = MannWhitneyUTest(filter(r -> r.Virus == cases[2], Cas_Af_df).AfterLast,
+    filter(r -> r.Virus == cases[1], Cas_Af_df).AfterLast)
+Cas_Af_effect = Cas_Af_test.U/(Cas_Af_test.nx * Cas_Af_test.ny)
+Cas_Af_plt = Cas_Af[1]
+ylabel!("Median consecutive failures")
+xlabel!("Group")
+FLPDevelopment.annotate_pvalue!(Cas_Af_plt,4.1,0.15,"Mann-Whitney U test, p = $(round(pvalue(Cas_Af_test), digits = 2))")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","AF_test.pdf"))
+########################### Cas Incorrect scatter ######################################
+Cas_Inc = FLPDevelopment.incorrect_fraction_scatter(Cas_s, :Virus, :IncorrectLeave)
+Cas_Inc_df = Cas_Inc[3]
+cases = union(Cas_s.Virus)
+Cas_Inc_test = MannWhitneyUTest(filter(r -> r.Virus == cases[1], Cas_Inc_df).IncorrectLeave,
+    filter(r -> r.Virus == cases[2], Cas_Inc_df).IncorrectLeave)
+Cas_Inc_efect = Cas_Inc_test.U/(Cas_Inc_test.nx * Cas_Inc_test.ny)
+Cas_Inc_plt = Cas_Inc[1]
+ylabel!("Fraction of premature leaving")
+xlabel!("Group")
+FLPDevelopment.annotate_pvalue!(Cas_Inc_plt,0.6,0.03,"Mann-Whitney U test, p = $(round(pvalue(Cas_Inc_test), digits = 2))")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","Incorrect_test.pdf"))
+########################### Cas Heatmaps ######################################
+theme(:default)
+plotlyjs(size=(600,600), tick_orientation = :out, grid = false,
+    # linecolor = :black,
+    markerstrokecolor = :black,
+    thickness_scaling = 1,
+    markersize = 8)
+Cas_HExp, Cas_HCon, Cas_HDiff = FLPDevelopment.HeatMapsLeave(Cas_p; filtering = true)
+plot(Cas_HExp, Cas_HCon, Cas_HDiff, layout = (1,3), size = (1850,600))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","HeatMaps.html"))
+########################### Cas Bidimensional Survival ######################################
+theme(:sand)
+plotlyjs(size=(600,600), tick_orientation = :out, grid = false,
+    # background_color = :auto,
+    markerstrokecolor = :black,
+    thickness_scaling = 1,
+    markersize = 8)
+Cas_surfdf = filter(r-> r.Streak <= 75, Cas_s)
+Cas_BSurvExp, Cas_BSurvCon, Cas_BSurvDiff = FLPDevelopment.BiSurvival(Cas_surfdf)
+levels(Cas_s.Virus)
+Cas_BSurvExp
+Cas_BSurvCon
+Cas_BSurvDiff
+savefig(Cas_BSurvExp,joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","BiSurvExp.html"))
+savefig(Cas_BSurvCon,joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","BiSurvCon.html"))
+savefig(Cas_BSurvDiff,joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig3","BiSurvDiff.html"))
+#######################
+
+
+
+
+
+
+
+
 ########################### Afterlast Plots ######################################
 #calculate mean of var for each mouse over a trial's bin
 overtrialplot = FLPDevelopment.overtrial_plot(agedf, :Age, :AfterLast)

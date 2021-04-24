@@ -226,7 +226,7 @@ function median_ci_scatter(df, grouping, var)
     plt = @df df2 scatter(1:nrow(df2),:Central,
         yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(xaxis)),
+        xticks = (1:nrow(df2),string.(cols(xaxis))),
         legend = false)
     return plt, df2, df1
 end
@@ -263,9 +263,24 @@ function incorrect_fraction_scatter(df, grouping, var)
     plt = @df df2 scatter(1:nrow(df2),:Central,
         yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(xaxis)),
+        xticks = (1:nrow(df2),string.(cols(xaxis))),
         legend = false)
     return plt, df2, df1
+end
+
+function annotate_pvalue!(plt,ref, span, p)
+    if isa(p, String)
+        message = p
+    else
+        message = p < 0.01 ? "p < 0.01" : "p < 0.05"
+    end
+    plot!(plt,[1,1],[ref,ref+span], linecolor = :black)
+    plot!(plt,[2,2],[ref,ref+span], linecolor = :black)
+    plot!(plt,[1,2],[ref+span/2,ref+span/2], linecolor = :black)
+    annotate!(plt,[(1.5,1.2*span+ref,
+        Plots.text(message,
+        10, :center))])
+    return plt
 end
 
 function test_difference(df1,xvar,yvar;normality = true)
@@ -683,12 +698,14 @@ end
 
 # Heat_pal1 = cgrad([RGB(218/255, 238/255, 235/255), RGB(57/255, 153/255, 145/255), RGB(0/255, 66/255, 55/255)])
 # Heat_pal2 = :BrBg_11
+Heat_pal0 = cgrad([RGB(140/255, 81/255, 11/255), RGB(191/255, 131/255, 45/255), RGB(223/255, 194/255, 126/255),
+RGB(247/255, 233/255, 196/255),RGB(245/255, 245/255, 245/255), RGB(199/255, 234/255, 228/255),
+RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255), RGB(1/255, 102/255, 94/255)])
 Heat_pal1 = cgrad([RGB(199/255, 234/255, 228/255),
-    RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255), RGB(1/255, 102/255, 94/255)])
-Heat_pal2 = cgrad([RGB(140/255, 81/255, 11/255), RGB(191/255, 131/255, 45/255), RGB(223/255, 194/255, 126/255),
-    RGB(247/255, 233/255, 196/255),RGB(245/255, 245/255, 245/255), RGB(199/255, 234/255, 228/255),
-    RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255), RGB(1/255, 102/255, 94/255)])
-Heat_pal3 = cgrad([RGB(140/255, 81/255, 11/255), RGB(223/255, 194/255, 126/255),
+    RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255),
+    RGB(1/255, 102/255, 94/255)])
+Heat_pal2 = cgrad([RGB(140/255, 81/255, 11/255), RGB(223/255, 194/255, 126/255),
+    RGB(245/255, 245/255, 245/255),
     RGB(128/255, 206/255, 193/255),  RGB(1/255, 102/255, 94/255)])
 
 function HeatMapsLeave(pokedf; filtering = false, grouping = nothing)
@@ -734,7 +751,7 @@ function Surface_difference(streakdf, trial_r, duration_r,grouping; length = 20)
     cases = levels(streakdf[:,grouping])
     surf_exp = Surface_matrix(filter(grouping => t -> t == cases[2], streakdf), trial_r = trial_r, duration_r = duration_r, length = length)
     surf_con = Surface_matrix(filter(grouping => t -> t == cases[1], streakdf), trial_r = trial_r, duration_r = duration_r, length = length)
-    surf_diff = surf_exp - surf_con
+    surf_diff = surf_con - surf_exp #surf_exp - surf_con
     return surf_exp, surf_con, surf_diff
 end
 
@@ -742,14 +759,18 @@ function Surface_plot(trial_r,duration_r, BiSurv; title = nothing, difference = 
     if difference
         col = Heat_pal2
         lims = (-0.25,0.25)
-        bg_col = RGB(0.2, 0.2, 0.2)
+        cam = (40,65)
+        zlab = ""
     else
         col = Heat_pal1
         lims = (0,1)
+        cam = (115,20)
+        zlab = "Survival rate"
     end
     plot(trial_r,duration_r, BiSurv, st =:surface,
-        xlabel = "Trial", ylabel = "Time (log10 s)", zlabel = "Survival rate",
-        color = col, clim = lims, camera = (70,48), background_color = RGB(0.2, 0.2, 0.2),
+        xlabel = "Trial", ylabel = "Poke time (log10 s)", zlabel = zlab,
+        color = col, clim = lims, camera = cam, grid = true, left_margin = [0mm 0mm],
+        # background_color = RGB(0.2, 0.2, 0.2), fg = RGB(1.0, 1.0, 1.0),
         title = title)
 end
 
@@ -768,7 +789,7 @@ function BiSurvival(streakdf; length = 20, trial_r = nothing, duration_r = nothi
         grouping; length = length)
     SurfExp = Surface_plot(trial_r,duration_r,surf_exp; title = cases[2])
     SurfCon = Surface_plot(trial_r,duration_r,surf_con; title = cases[1])
-    SurfDiff = Surface_plot(trial_r,duration_r,surf_diff; difference = true, title = " $(cases[2]) - $(cases[1])")
+    SurfDiff = Surface_plot(trial_r,duration_r,surf_diff; difference = true, title = "Survival rate difference <br> $(cases[1]) - $(cases[2])")
     return SurfExp, SurfCon, SurfDiff
 end
 
