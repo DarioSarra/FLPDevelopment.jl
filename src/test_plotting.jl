@@ -163,7 +163,7 @@ function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
         firstval = union(df1[:,xvar])[1]
         df1[!,:xpos] = [v == firstval ? 1 : 2  for v in df1[:,xvar]]
     catch
-        println("Can'case1 define x position")
+        println("Can't define x position")
     end
     return df1
 end
@@ -176,13 +176,13 @@ function group_summary(df1,xvar,yvar; normality = true)
     end
     df2 = combine(groupby(df1,xvar)) do dd
         # using bootstrap to calculate the central point and the 95% CI
-        b = bootstrap(central,dd[:,yvar], BasicSampling(100000))
+        b = bootstrap(central, dd[:,yvar], BasicSampling(100000))
         #bootstrap confint returns a tuple containing a tuple with the statistic
         #estimates and the CI lower and uppper bounds
-        m, lower, upper = confint(b,BasicConfInt(0.95))[1]
+        m, lower, upper = confint(b,PercentileConfInt(0.95))[1]
         ci1 = m - lower
         ci2 = upper - m
-        (Central = m, ERR = (ci2,ci1))
+        (Central = m, ERR = (ci1,ci2))
     end
     return df2
 end
@@ -214,8 +214,8 @@ end
     B - calculate the mode and ci for each group using group_summary
 """
 
-function median_ci_scatter(df, grouping, var)
-    df1 = individual_summary(df, grouping, var)
+function median_ci_scatter(df, grouping, var; ind_summary = mean)
+    df1 = individual_summary(df, grouping, var; summary = ind_summary)
     df2 = group_summary(df1, grouping, var; normality = false)
     if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
         df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
@@ -283,10 +283,17 @@ function annotate_pvalue!(plt,ref, span, p)
     return plt
 end
 
-function test_difference(df1,xvar,yvar;normality = true)
-    cases = union(df1[:,xvar])
-    case1 = df1[df1[:,xvar] .== cases[1], yvar]
-    case2 = df1[df1[:,xvar] .== cases[2], yvar]
+function MWU_test(df1,group,yvar)
+    cases = union(df1[:,group])
+    case1 = df1[df1[:,group] .== cases[1], yvar]
+    case2 = df1[df1[:,group] .== cases[2], yvar]
+    test = MannWhitneyUTest(case1,case2)
+end
+
+function test_difference(df1,group,yvar;normality = false)
+    cases = union(df1[:,group])
+    case1 = df1[df1[:,group] .== cases[1], yvar]
+    case2 = df1[df1[:,group] .== cases[2], yvar]
     if normality
         test = UnequalVarianceTTest(case1,case2)
     else
@@ -832,17 +839,17 @@ function Leave_plots(pokedf,streakdf, modeldf; grouping = nothing, filtering = f
     return PLeave, LeavexTrial, Model, HExp, HCon, HDiff, MedianSurvival, SurvivalAn, HazardAn
 end
 
-function leave_modelplt(bootdf)
+function leave_modelplt(bootdf; ylab = :variable)
     Model = @df bootdf scatter(:coef ,1:nrow(bootdf),
         xerror = :err, xlabel = "Coefficient estimate",
-        yticks = (1:nrow(bootdf), :variable), legend = false)
+        yticks = (1:nrow(bootdf), cols(ylab)), legend = false)
     vline!([0], linecolor = :red, legend = false)
     return Model
 end
 
-function bootstrapdf(df, mdl; grouping = nothing)
+function bootstrapdf(df, mdl; grouping = nothing, n = 100)
     rng = MersenneTwister(1234321)
-    samp1 = parametricbootstrap(rng,100,mdl)
+    samp1 = parametricbootstrap(rng,n,mdl)
     sampdf = DataFrame(samp1.allpars)
     bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
     filter!(r -> ismissing(r.group), bootdf)
@@ -856,11 +863,15 @@ function bootstrapdf(df, mdl; grouping = nothing)
     return bootdf
 end
 
-function mediansurvival_analysis(streakdf,variable, grouping)
+function mediansurvival_analysis(streakdf,variable, grouping; plt = plot())
     dd1 = combine(groupby(streakdf,[:MouseID,grouping]), variable => median => variable)
     dd2 = combine(groupby(dd1,grouping), variable => (t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
-    @df dd2 scatter(string.(cols(grouping)), :Mean, yerror = :Sem, xlims = (-0.25,2.25),
-        xlabel = "Group", ylabel = "Median survival time", label = "")
+    isa(dd2[:, grouping], CategoricalArray) && (dd2[!,grouping] = string.(dd2[!,grouping]))
+    println(isa(dd2[:, grouping], CategoricalArray))
+    @df dd2 scatter!(plt,cols(grouping), :Mean, yerror = :Sem,
+        # xlims = (-0.25,2.25), xlabel = "Group",
+        ylabel = "Median survival time", label = "")
+    return plt
 end
 
 function survivalrate_algorythm(variable; step = 0.05, xaxis = nothing)
@@ -876,15 +887,28 @@ function hazardrate_algorythm(variable; step = 0.05, xaxis = nothing)
     return (Xaxis = collect(xaxis), fy = hazard)
 end
 
-function function_analysis(streakdf,variable, f; grouping = nothing, step =0.05)
+function function_analysis(streakdf,variable, f; grouping = nothing, step =0.05, calc = :basic,
+        color = [:auto], linestyle = [:auto])
     subgroups = isnothing(grouping) ? [:MouseID] : vcat(:MouseID,grouping)
     xaxis = range(extrema(streakdf[:, variable])..., step = step)
     dd1 = combine(groupby(streakdf,subgroups), variable => (t-> f(t,xaxis = xaxis)) => AsTable)
     rename!(dd1, Dict(:Xaxis => variable))
     sort!(dd1,[:MouseID,variable])
-    dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
+    if calc == :bootstrapping
+        dd2 = combine(groupby(dd1,grouping)) do dd3
+            group_summary(dd3,variable,:fy)
+        end
+    elseif calc == :quantiles
+        dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Central = mean(t),
+        # ERR = (abs(mean(t) - quantile(t,0.25)), abs(quantile(t,0.975)-mean(t))),
+        ERR = (abs(mean(t) - quantile(t,0.25)) + abs(quantile(t,0.975)-mean(t)))/2,
+        SEM = sem(t))) => AsTable)
+    elseif calc == :basic
+        dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Central = mean(t),ERR = sem(t))) => AsTable)
+    end
     sort!(dd2,variable)
-    @df dd2 plot(cols(variable),:Mean, ribbon = :Sem, group = cols(grouping), linecolor = :auto)
+    plt = @df dd2 plot(cols(variable),:Central, ribbon = :ERR, group = cols(grouping), linecolor = :auto, color = color, linestyle = linestyle)
+    return plt, dd2
 end
 
 # ############## single animal plotting

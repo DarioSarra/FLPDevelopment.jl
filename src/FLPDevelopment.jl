@@ -13,6 +13,7 @@ include("utilities.jl")
 include("test_plotting.jl")
 include("pokes_plotting.jl")
 include("Mixture_fit.jl")
+include("Figures_plotting.jl")
 
 export youngs,dario_youngs, females, sixty_days_old, first_females_juveniles, second_females_juveniles, age_exp, cnos_animals, wt_animals, below_thrs, VirusDict
 export first_females_group, second_females_group
@@ -24,5 +25,7 @@ export mediansurvival_analysis, survivalrate_algorythm, hazardrate_algorythm, fu
 export Heatmap_group, Heatmap_plot, Heatmap_difference, Leave_plots, bootstrapdf,leave_modelplt
 export poke_plot!, maintitle!
 export mixture_gamma, mixture_gamma_weighted, mixture_exp, mixture_exp_weighted, mixture_gamma_exp
+export incorrect_fraction, median_ci_scatter
+export add_bar!, add_info!, Difference
 
 end # module

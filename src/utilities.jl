@@ -85,7 +85,7 @@ function bin_axis(v; length = 50, unit_step = nothing)
         return [round(r[findfirst(r .>= x )], digits=1) for x in v]
     else
         r = range(extrema(v)...;step = unit_step)
-        return [isnothing(findfirst(r .>= x )) ? last(r) + step(r) : r[findfirst(r .>= x )] for x in v]
+        return [isnothing(findfirst(r .> x )) ? last(r) : r[findfirst(r .> x )] for x in v]
     end
 end
 
@@ -192,7 +192,7 @@ function summarydf(streak_df, pokes_df)
     Summary_df[!,:Perr] = round.(Summary_df.Perr, digits = 2)
     Summary_df[!,:RewxPoke] = round.(Summary_df.Rewards ./ Summary_df.Pokes , digits = 2)
     Summary_df[!,:RewxTrial] = round.(Summary_df.Rewards ./ Summary_df.Trials , digits = 2)
-    pokes_df = filter(r-> r.PreInterpoke > 0, pokes_df)
+    pokes_df = filter(r-> !ismissing(r.PreInterpoke), pokes_df)
     gdp = groupby(pokes_df,:MouseID)
     Summary_df = leftjoin(Summary_df,combine(gdp, :PreInterpoke => mean => :AvgInterpoke), on = :MouseID)
     Summary_df[!,:AvgInterpoke] = round.(Summary_df.AvgInterpoke, digits = 2)

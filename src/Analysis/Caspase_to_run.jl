@@ -13,16 +13,12 @@ end
 Cas_d, Cas_p, Cas_b, Cas_s = process_dataset(path)
 
 for df in (Cas_p, Cas_b, Cas_s)
-    gd = groupby(df,:Session)
-    transform!(gd, :Streak => maximum => :Performance)
-end
-
-for df in (Cas_p, Cas_b, Cas_s)
     df[!,:Virus] = [get(VirusDict,x,"Missing") for x in df.MouseID]
     df[!,:Sex] = [x in females ? "F" : "M" for x in df.MouseID]
-    df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
+    # df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
     transform!(df, :Virus => categorical, renamecols=false)
-    # categorical!(df,:Virus)
+    gd = groupby(df,:Session)
+    transform!(gd, :Streak => maximum => :Performance)
 end
 
 levels!(Cas_p.Virus,["tdTomato", "Caspase"])

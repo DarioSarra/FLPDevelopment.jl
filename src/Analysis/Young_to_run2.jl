@@ -17,10 +17,16 @@ Age_d, Age_p, Age_b, Age_s = process_dataset(path)
 for df in (Age_p, Age_b, Age_s)
     df[!,:Age] = [x in dario_youngs ? "Juveniles" : "Adults" for x in df.MouseID]
     df[!,:Sex] = [x in females ? "F" : "M" for x in df.MouseID]
-    df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
+    # df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
+    transform!(df, :Age => categorical, renamecols=false)
     gd = groupby(df,:Session)
     transform!(gd, :Streak => maximum => :Performance)
 end
+
+levels!(Age_p.Age,["Adults", "Juveniles"])
+levels!(Age_b.Age,["Adults", "Juveniles"])
+levels!(Age_s.Age,["Adults", "Juveniles"])
+
 Afreq = countmap(Age_s.AfterLast)
 Aprob = Dict()
 for (a,f) in Afreq

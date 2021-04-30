@@ -74,7 +74,7 @@ function protocol_annotate!(p,r::DataFrames.DataFrameRow)
             t = "H"
         end
         x = start + (Width/2)
-        annotate!([(x, y, Plots.text(t, 8, :center))])
+        annotate!([(x, y, Plots.text(t, 6, :center))])
     end
 end
 
@@ -84,7 +84,7 @@ function side_annotate!(p,r::DataFrames.DataFrameRow)
     else
         side = r.Side
     end
-    annotate!(p,[(-0.5, r.Streak, Plots.text(side, 6, :center))])
+    annotate!(p,[(-0.5, r.Streak, Plots.text(side, 4, :center))])
 end
 
 function poke_plot!(p,r::DataFrames.DataFrameRow)
