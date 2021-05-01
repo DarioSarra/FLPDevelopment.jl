@@ -168,6 +168,13 @@ function individual_summary(df,xvar,yvar; summary = mean, err = :MouseID)
     return df1
 end
 
+"""
+    `group_summary(df1,xvar,yvar; normality = true)`
+    using bootstrap computes central measure plus 95% CI
+    if normality is true it uses mean as central measure
+    else it uses median
+"""
+
 function group_summary(df1,xvar,yvar; normality = true)
     if normality
         central = mean
@@ -187,12 +194,14 @@ function group_summary(df1,xvar,yvar; normality = true)
     return df2
 end
 
-function mean_sem_scatter(df, grouping, var)
-    df1 = individual_summary(df, grouping, var)
+function mean_sem_scatter(df, grouping, var; ind_summary = mean)
+    df1 = individual_summary(df, grouping, var; summary = ind_summary)
     df2 = combine(groupby(df1,grouping)) do dd
         m = mean(dd[:,var])
         s = sem(dd[:,var])
-        (Central = m, ERR = (s,s))
+        sd = std(dd[:,var])
+        n = nrow(dd)
+        (Central = m, ERR = (s,s), SD = sd, N = n)
     end
     if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
         df2[!,:xaxis] = [join(x,"_") for x in eachrow(df2[:, grouping])]
@@ -200,12 +209,19 @@ function mean_sem_scatter(df, grouping, var)
     else
         xaxis = grouping
     end
+    try
+        cases = levels(df[:,grouping])
+        df2[!,:color] = [val == cases[1] ? OGCol1 : OGCol2 for val in df2[:,xaxis]]
+    catch
+        df2[!,:color] .= :gray75
+    end
     plt = @df df2 scatter(1:nrow(df2),:Central,
         yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
-        xticks = (1:nrow(df2),cols(xaxis)),
+        xticks = (1:nrow(df2),string.(cols(xaxis))),
+        color= :color,
         legend = false)
-    return plt, df2
+    return plt, df2, df1
 end
 
 """
@@ -223,10 +239,17 @@ function median_ci_scatter(df, grouping, var; ind_summary = mean)
     else
         xaxis = grouping
     end
+    try
+        cases = levels(df[:,grouping])
+        df2[!,:color] = [val == cases[1] ? OGCol1 : OGCol2 for val in df2[:,xaxis]]
+    catch
+        df2[!,:color] .= :gray75
+    end
     plt = @df df2 scatter(1:nrow(df2),:Central,
         yerror = :ERR,
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),string.(cols(xaxis))),
+        color = :color,
         legend = false)
     return plt, df2, df1
 end
@@ -705,6 +728,96 @@ end
 
 # Heat_pal1 = cgrad([RGB(218/255, 238/255, 235/255), RGB(57/255, 153/255, 145/255), RGB(0/255, 66/255, 55/255)])
 # Heat_pal2 = :BrBg_11
+
+
+function leave_modelplt(bootdf; ylab = :variable)
+    btdf = bootdf[[1,2,4,3,5,6],:]
+    Model = @df btdf scatter(:coef ,1:nrow(bootdf),
+        xerror = :err, xlabel = "Coefficient estimate",
+        yticks = (1:nrow(bootdf), cols(ylab)), legend = false)
+    vline!([0], linecolor = :red, legend = false)
+    return Model
+end
+
+function bootstrapdf(df, mdl; grouping = nothing, n = 100)
+    rng = MersenneTwister(1234321)
+    samp1 = parametricbootstrap(rng,n,mdl)
+    sampdf = DataFrame(samp1.allpars)
+    bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
+    filter!(r -> ismissing(r.group), bootdf)
+    bootdf.coef = coef(mdl)
+    isnothing(grouping) && (grouping = check_group(df))
+    cases = levels(df[:,grouping])
+    bootdf.variable = ["Intercept", "Trial", "$grouping: $(cases[2])", "Poke-time",
+        "Trial & $grouping: $(cases[2])",
+        "Poke-time & $grouping: $(cases[2])"]
+    transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
+    return bootdf
+end
+
+function mediansurvival_analysis(streakdf,variable, grouping; plt = plot())
+    dd1 = combine(groupby(streakdf,[:MouseID,grouping]), variable => median => variable)
+    # dd2 = combine(groupby(dd1,grouping), variable => (t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
+    dd2 = group_summary(dd1,grouping,variable; normality = false)
+    # dd2[!,:low] = [x[1] for x in dd2.ERR]
+    # dd2[!,:up] = [x[2] for x in dd2.ERR]
+    isa(dd2[:, grouping], CategoricalArray) && (dd2[!,grouping] = string.(dd2[!,grouping]))
+    println(isa(dd2[:, grouping], CategoricalArray))
+    @df dd2 scatter!(plt,cols(grouping), :Central, yerror = :ERR,
+        # xlims = (-0.25,2.25), xlabel = "Group",
+        ylabel = "Median survival time", label = "")
+    return plt
+end
+
+function survivalrate_algorythm(variable; step = 0.05, xaxis = nothing)
+    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
+    survival = 1 .- ecdf(variable).(xaxis)
+    return (Xaxis = collect(xaxis), fy = survival)
+end
+
+function cumulative_algorythm(variable; step = 0.05, xaxis = nothing)
+    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
+    cum = ecdf(variable).(xaxis)
+    return (Xaxis = collect(xaxis), fy = cum)
+end
+
+function hazardrate_algorythm(variable; step = 0.05, xaxis = nothing)
+    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
+    survival = 1 .- ecdf(variable).(xaxis)
+    hazard = -pushfirst!(diff(survival),0)./survival
+    return (Xaxis = collect(xaxis), fy = hazard)
+end
+
+function function_analysis(streakdf,variable, f; grouping = nothing, step =0.05, calc = :basic,
+        color = [:auto], linestyle = [:auto])
+    subgroups = isnothing(grouping) ? [:MouseID] : vcat(:MouseID,grouping)
+    xaxis = range(extrema(streakdf[:, variable])..., step = step)
+    dd1 = combine(groupby(streakdf,subgroups), variable => (t-> f(t,xaxis = xaxis)) => AsTable)
+    rename!(dd1, Dict(:Xaxis => variable))
+    sort!(dd1,[:MouseID,variable])
+    if calc == :bootstrapping
+        dd2 = combine(groupby(dd1,grouping)) do dd3
+            group_summary(dd3,variable,:fy; normality = false)
+        end
+        dd2[!,:low] = [x[1] for x in dd2.ERR]
+        dd2[!,:up] = [x[2] for x in dd2.ERR]
+    elseif calc == :quantiles
+        dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Central = mean(t),
+        low= abs(mean(t) - quantile(t,0.25),
+        up = abs(quantile(t,0.975)-mean(t))),
+        # ERR = (abs(mean(t) - quantile(t,0.25)) + abs(quantile(t,0.975)-mean(t)))/2,
+        SEM = sem(t))) => AsTable)
+    elseif calc == :basic
+        dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Central = mean(t),up = sem(t), low = sem(t))) => AsTable)
+    end
+    sort!(dd2,variable)
+
+    plt = @df dd2 plot(cols(variable),:Central, ribbon = (:low, :up), group = cols(grouping), linecolor = :auto, color = color, linestyle = linestyle)
+    return plt, dd2
+end
+
+OGCol1 = RGB(0/255, 154/255, 250/255)
+OGCol2 = RGB(227/255, 111/255, 71/255)
 Heat_pal0 = cgrad([RGB(140/255, 81/255, 11/255), RGB(191/255, 131/255, 45/255), RGB(223/255, 194/255, 126/255),
 RGB(247/255, 233/255, 196/255),RGB(245/255, 245/255, 245/255), RGB(199/255, 234/255, 228/255),
 RGB(128/255, 206/255, 193/255), RGB(54/255, 151/255, 144/255), RGB(1/255, 102/255, 94/255)])
@@ -838,79 +951,6 @@ function Leave_plots(pokedf,streakdf, modeldf; grouping = nothing, filtering = f
     plot!(HazardAn, xlabel = "Time (log10 s)", ylabel = "Hazard rate", label = "")
     return PLeave, LeavexTrial, Model, HExp, HCon, HDiff, MedianSurvival, SurvivalAn, HazardAn
 end
-
-function leave_modelplt(bootdf; ylab = :variable)
-    Model = @df bootdf scatter(:coef ,1:nrow(bootdf),
-        xerror = :err, xlabel = "Coefficient estimate",
-        yticks = (1:nrow(bootdf), cols(ylab)), legend = false)
-    vline!([0], linecolor = :red, legend = false)
-    return Model
-end
-
-function bootstrapdf(df, mdl; grouping = nothing, n = 100)
-    rng = MersenneTwister(1234321)
-    samp1 = parametricbootstrap(rng,n,mdl)
-    sampdf = DataFrame(samp1.allpars)
-    bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
-    filter!(r -> ismissing(r.group), bootdf)
-    bootdf.coef = coef(mdl)
-    isnothing(grouping) && (grouping = check_group(df))
-    cases = levels(df[:,grouping])
-    bootdf.variable = ["Intercept", "Trial", "$grouping: $(cases[2])", "Poke-time",
-        "Trial & $grouping: $(cases[2])",
-        "Poke-time & $grouping: $(cases[2])"]
-    transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
-    return bootdf
-end
-
-function mediansurvival_analysis(streakdf,variable, grouping; plt = plot())
-    dd1 = combine(groupby(streakdf,[:MouseID,grouping]), variable => median => variable)
-    dd2 = combine(groupby(dd1,grouping), variable => (t-> (Mean = mean(t),Sem = sem(t))) => AsTable)
-    isa(dd2[:, grouping], CategoricalArray) && (dd2[!,grouping] = string.(dd2[!,grouping]))
-    println(isa(dd2[:, grouping], CategoricalArray))
-    @df dd2 scatter!(plt,cols(grouping), :Mean, yerror = :Sem,
-        # xlims = (-0.25,2.25), xlabel = "Group",
-        ylabel = "Median survival time", label = "")
-    return plt
-end
-
-function survivalrate_algorythm(variable; step = 0.05, xaxis = nothing)
-    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
-    survival = 1 .- ecdf(variable).(xaxis)
-    return (Xaxis = collect(xaxis), fy = survival)
-end
-
-function hazardrate_algorythm(variable; step = 0.05, xaxis = nothing)
-    isnothing(xaxis) && (xaxis = range(extrema(variable)..., step = step))
-    survival = 1 .- ecdf(variable).(xaxis)
-    hazard = -pushfirst!(diff(survival),0)./survival
-    return (Xaxis = collect(xaxis), fy = hazard)
-end
-
-function function_analysis(streakdf,variable, f; grouping = nothing, step =0.05, calc = :basic,
-        color = [:auto], linestyle = [:auto])
-    subgroups = isnothing(grouping) ? [:MouseID] : vcat(:MouseID,grouping)
-    xaxis = range(extrema(streakdf[:, variable])..., step = step)
-    dd1 = combine(groupby(streakdf,subgroups), variable => (t-> f(t,xaxis = xaxis)) => AsTable)
-    rename!(dd1, Dict(:Xaxis => variable))
-    sort!(dd1,[:MouseID,variable])
-    if calc == :bootstrapping
-        dd2 = combine(groupby(dd1,grouping)) do dd3
-            group_summary(dd3,variable,:fy)
-        end
-    elseif calc == :quantiles
-        dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Central = mean(t),
-        # ERR = (abs(mean(t) - quantile(t,0.25)), abs(quantile(t,0.975)-mean(t))),
-        ERR = (abs(mean(t) - quantile(t,0.25)) + abs(quantile(t,0.975)-mean(t)))/2,
-        SEM = sem(t))) => AsTable)
-    elseif calc == :basic
-        dd2 = combine(groupby(dd1,[grouping,variable]), :fy =>(t-> (Central = mean(t),ERR = sem(t))) => AsTable)
-    end
-    sort!(dd2,variable)
-    plt = @df dd2 plot(cols(variable),:Central, ribbon = :ERR, group = cols(grouping), linecolor = :auto, color = color, linestyle = linestyle)
-    return plt, dd2
-end
-
 # ############## single animal plotting
 # function bymouse_logtimehist(df,var; grouping = nothing, digits = 1)
 #     df0 = copy(df)

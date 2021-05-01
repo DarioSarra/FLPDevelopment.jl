@@ -19,6 +19,7 @@ for df in (Age_p, Age_b, Age_s)
     df[!,:Sex] = [x in females ? "F" : "M" for x in df.MouseID]
     # df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
     transform!(df, :Age => categorical, renamecols=false)
+    transform!(df, :Sex => categorical, renamecols=false)
     gd = groupby(df,:Session)
     transform!(gd, :Streak => maximum => :Performance)
 end
