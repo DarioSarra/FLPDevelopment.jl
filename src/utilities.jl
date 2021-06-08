@@ -1,6 +1,7 @@
 function fraction_true(v::AbstractArray{Bool})
     sum(v)/length(v)
 end
+
 function incorrect_fraction(v::AbstractArray{Bool})
     sum(v)/(length(v)-sum(v))
 end
