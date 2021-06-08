@@ -24,7 +24,7 @@ function add_effect!(plt, ref, span, e)
     return plt
 end
 
-function add_info!(plt, df, p, e; normality = false)
+function add_info!(plt, df, p, e; normality = false, ylims = nothing)
     plt_lim = maximum(df.Central .+ last.(df.ERR))
     plt_span = plt_lim/10
     ref, span = plt_lim + plt_span, plt_span/2
@@ -41,12 +41,13 @@ function add_info!(plt, df, p, e; normality = false)
         pmessage = "Mann-Whitney U test, p = $(pval)"
     end
     add_pvalue!(plt, ref+span/2, span/2, pmessage)
-    yaxis!(ylims = (0,plt_lim + 2plt_span))
+    isnothing(ylims) && (ylims = (0,plt_lim + 2plt_span))
+    yaxis!(ylims = ylims)
     # xlabel!("Group")
     return plt
 end
 
-function Difference(df, group, var; ind_summary = mean, ylabel = "Median ...", xyfont = font(18, "Bookman Light"))
+function Difference(df, group, var; ind_summary = mean, ylabel = "Median ...", xyfont = font(18, "Bookman Light"), ylims = nothing)
     res_plt, res_group, res_individual = median_ci_scatter(df, group, var; ind_summary = ind_summary)
     res_test = FLPDevelopment.MWU_test(res_individual, group, var)
     res_effect = res_test.U/(res_test.nx * res_test.ny)
@@ -54,7 +55,7 @@ function Difference(df, group, var; ind_summary = mean, ylabel = "Median ...", x
         res_effect = ((res_test.nx * res_test.ny) - res_test.U) / (res_test.nx * res_test.ny)
     end
     e = round(res_effect; digits =2)
-    add_info!(res_plt, res_group, pvalue(res_test), e)
+    add_info!(res_plt, res_group, pvalue(res_test), e; ylims = ylims)
     xprop = ("Group", xyfont)
     yprop = (ylabel, xyfont)
     plot!(xaxis = xprop, yaxis = yprop)

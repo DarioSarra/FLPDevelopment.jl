@@ -90,8 +90,9 @@ end
 open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
 open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
 ########################### Example Session Plots ######################################
-tt = filter(r -> r.MouseID == "RJ23" && 08<= r.Streak <= 52, Age_p)
-xyfont = font(18, "courier")
+lowertrial = 20
+uppertrial = 45
+tt = filter(r -> r.MouseID == "RJ23" && lowertrial <= r.Streak <= uppertrial, Age_p)
 xprop = ("Time (seconds)", (-1,16), xyfont)
 yprop = ("Trials", xyfont,false, false)
 plt = plot(legend = false, xaxis = xprop, yaxis = yprop, yticks = false)
@@ -101,7 +102,7 @@ end
 plt
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AdultSession.pdf"))
 ##
-tt = filter(r -> r.MouseID == "RJ02" && 08<= r.Streak <= 52, Age_p)
+tt = filter(r -> r.MouseID == "RJ02" && lowertrial <= r.Streak <= uppertrial, Age_p)
 plt = plot(legend = false, xaxis = xprop, yaxis = yprop, yticks = false)
 for r in eachrow(tt)
     FLPDevelopment.session_plot!(plt, r)
@@ -112,7 +113,7 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","
 comp_df = CSV.read("/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Stimulations/DRN_Opto_again/pokesDRN_Opto_again.csv", DataFrame)
 comp90 = filter(r-> r.Protocol == "90/90", comp_df)
 sessions = union(comp90.Session)
-tt = filter(r-> r.Session == sessions[99] && 8<= r.Streak <= 52, comp90)
+tt = filter(r-> r.Session == sessions[99] && lowertrial <= r.Streak <= uppertrial, comp90)
 transform!(groupby(tt, [:Session, :Streak]), [:PokeIn, :PokeOut] => ((i,o) -> (In = i .- i[1], Out = o .- i[1])) => AsTable)
 plt = plot(legend = false, xaxis = xprop, yaxis = yprop, yticks = false)
 for r in eachrow(tt)
@@ -121,44 +122,122 @@ end
 plt
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","TrainedSession.pdf"))
 
-
 ########################### Duty cycle ######################################
 Age_df = combine(groupby(Age_p, [:MouseID,:Streak, :Age]), :PokeDur => sum => :PokingTime, [:PokeIn, :PokeOut] => ((i,o) -> o[end] - i[1]) => :TrialDuration)
 Age_df.RelativePokingTime = Age_df.PokingTime./Age_df.TrialDuration
-# Age_Poking = Difference(Age_df, :Age, :RelativePokingTime; ind_summary = median, ylabel = "Poking rate")
-Age_Poking = FLPDevelopment.NormalDifference(Age_df, :Age, :RelativePokingTime; ylabel = "Poking rate", ind_summary = median)
+Age_Poking = Difference(Age_df, :Age, :RelativePokingTime; ind_summary = median, ylabel = "Poking rate", ylims = (0,1))
+# Age_Poking = FLPDevelopment.NormalDifference(Age_df, :Age, :RelativePokingTime; ylabel = "Poking rate", ind_summary = median)
 Age_Poking.plt
+Age_Poking.groupdf
+Age_Poking.test
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","DutyCycle_test.pdf"))
 ###
 Cas_df = combine(groupby(Cas_p, [:MouseID,:Streak, :Virus]), :PokeDur => sum => :PokingTime, [:PokeIn, :PokeOut] => ((i,o) -> o[end] - i[1]) => :TrialDuration)
 Cas_df.RelativePokingTime = Cas_df.PokingTime ./ Cas_df.TrialDuration
-# Cas_Poking = Difference(Cas_df, :Virus, :RelativePokingTime; ind_summary = median, ylabel = "Poking rate")
-Cas_Poking = FLPDevelopment.NormalDifference(Cas_df, :Virus, :RelativePokingTime; ind_summary = median, ylabel = "Poking rate")
+Cas_Poking = Difference(Cas_df, :Virus, :RelativePokingTime; ind_summary = median, ylabel = "Poking rate", ylims = (0,1))
+# Cas_Poking = FLPDevelopment.NormalDifference(Cas_df, :Virus, :RelativePokingTime; ind_summary = median, ylabel = "Poking rate")
 Cas_Poking.plt
 Cas_Poking.groupdf
 Cas_Poking.test
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","DutyCycle_test.pdf"))
-
-
-###########################  Survival rate ######################################
-Age_SurvivalAn, Age_SurvivalAn_df = function_analysis(Age_s,:LogDuration, survivalrate_algorythm; grouping = :Age, calc = :bootstrapping)
-xprop = ("Time (log10 s)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
-yprop = ("Survival rate", xyfont)
-plot!(Age_SurvivalAn, xaxis = xprop, yaxis = yprop, legend = false)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","SurvivalRate.pdf"))
-##
-Cas_SurvivalAn, Cas_SurvivalAn_df = function_analysis(Cas_s,:LogDuration, survivalrate_algorythm; grouping = :Virus, calc = :bootstrapping)
-plot!(Cas_SurvivalAn, xaxis = xprop, yaxis = yprop, legend = false)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","SurvivalRate.pdf"))
 ###########################  Leving rate ######################################
 Age_LevingAn, Age_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative_algorythm; grouping = :Age, calc = :bootstrapping)
-yprop = ("Pbrobablity of leaving", xyfont)
+yprop = ("Probablity of leaving", xyfont)
 plot!(Age_LevingAn, xaxis = xprop, yaxis = yprop, legend = false)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","LevingRate.pdf"))
 ##
 Cas_SurvivalAn, Cas_SurvivalAn_df = function_analysis(Cas_s,:LogDuration, cumulative_algorythm; grouping = :Virus, calc = :bootstrapping)
 plot!(Cas_SurvivalAn, xaxis = xprop, yaxis = yprop, legend = false)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","LevingRate.pdf"))
+###########################  Model bootstrap ######################################
+Age_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
+Age_Basic = fit(MixedModel,Age_Basic_verb, Age_p, Bernoulli())
+Age_Full_verb = @formula(Leave ~ 1 + Streak_zscore * Age + LogOut_zscore * Age +  (1+Streak_zscore+LogOut_zscore|MouseID));
+Age_Full = fit(MixedModel,Age_Full_verb, Age_p, Bernoulli())
+MixedModels.likelihoodratiotest(Age_Basic,Age_Full)
+Age_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","1000AgeBootstrap.csv"),DataFrame)
+# Age_BootDf = bootstrapdf(Age_p, Age_Full; n = 1000)
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","1000AgeBootstrap.csv"),Age_BootDf)
+Age_btdf = Age_BootDf[[1,4,2,3,5,6],:]
+Age_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Age_btdf.err]
+Age_btdf.variable
+yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Age_btdf)),
+    [L"Intercept",L"PokeTime",L"Trial",L"Juveniles",
+    L"Trial \&",
+    L"PokeTime \&"]))
+    xprop = ("Coefficient estimate", xyfont, (-1.33,1.3))
+    Titolo = L"+ \Leftarrow Behavioural Control \Rightarrow -"
+    @df Age_btdf scatter(:coef ,1:nrow(Age_btdf), xerror = :err,legend = false,
+    xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
+    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","1000AgeModelPlot.pdf"))
+# leave_modelplt(Age_BootDf)
+##
+Cas_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
+Cas_Basic = fit(MixedModel,Cas_Basic_verb, Cas_p, Bernoulli())
+Cas_Full_verb = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Virus +  (1+Streak_zscore+LogOut_zscore|MouseID));
+Cas_Full = fit(MixedModel,Cas_Full_verb, Cas_p, Bernoulli())
+MixedModels.likelihoodratiotest(Cas_Basic,Cas_Full)
+# Cas_BootDf = bootstrapdf(Cas_p, Cas_Full, n = 1000)
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000CasBootstrap.csv"),Cas_BootDf)
+Cas_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000CasBootstrap.csv"), DataFrame)
+Cas_btdf = Cas_BootDf[[1,4,2,3,5,6],:]
+Cas_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Cas_btdf.err]
+Cas_btdf.variable
+yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Cas_btdf)),
+    [L"Intercept",L"PokeTime",L"Trial",L"Caspase",
+    L"Trial \&",
+    L"PokeTime\&"]))
+    xprop = ("Coefficient estimate", xyfont, (-1.4,1.35))
+    @df Cas_btdf scatter(:coef ,1:nrow(Cas_btdf), xerror = :err,legend = false,
+    xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
+    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000ModelPlot.pdf"))
+# leave_modelplt(Cas_BootDf)
+
+
+########################## Incorrect scatter ######################################
+Age_Inc = Difference(Age_s, :Age, :IncorrectLeave; ind_summary = incorrect_fraction, ylabel = "Fraction of premature leaving", ylims = (0,1))
+Age_Inc.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","Incorrect_test.pdf"))
+Age_Inc.groupdf
+Age_Inc.test
+##
+Cas_Inc = Difference(Cas_s, :Virus, :IncorrectLeave; ind_summary = incorrect_fraction, ylabel = "Fraction of premature leaving", ylims = (0,1))
+Cas_Inc.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","Incorrect_test.pdf"))
+Cas_Inc.groupdf
+Cas_Inc.test
+########################### Age Sex Model bootstrap ######################################
+###########################  Leving rate ######################################
+Sex_LevingAn, Sex_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative_algorythm;
+    grouping = :Sex, calc = :bootstrapping, color = [:violetred3 :sandybrown])
+    xprop = ("Poke Time (log10 s)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
+    yprop = ("Probablity of leaving", xyfont)
+    plot!(Sex_LevingAn, xaxis = xprop, yaxis = yprop, legend = (0.8, 0.25))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","SexLevingRate.pdf"))
+
+########################### Age Sex Model bootstrap #####################################
+Age_Sex_verb1 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Age +  (1+Streak_zscore+LogOut_zscore|MouseID));
+Age_Sex_verb2 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Age*Sex +  (1+Streak_zscore+LogOut_zscore|MouseID));
+Age_Sex1 = fit(MixedModel,Age_Sex_verb1, Age_p, Bernoulli())
+Age_Sex2 = fit(MixedModel,Age_Sex_verb2, Age_p, Bernoulli())
+MixedModels.likelihoodratiotest(Age_Sex1,Age_Sex2)
+# Sex_BootDf2 = bootstrapdf(Age_p, Age_Sex2; n = 1000)
+# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000SexBootstrap.csv"),Sex_BootDf2)
+Sex_BootDf2 = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000SexBootstrap.csv"),DataFrame)
+Sex_btdf = Sex_BootDf2[[1,3,2,4,5,6],:]
+Sex_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Sex_btdf.err]
+open_html_table(Sex_btdf)
+yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Sex_btdf)),
+    [L"Intercept",L"PokeTime",L"Trial",L"Juveniles",
+    L"Male",
+    L"Juveniles \&"]))
+    xprop = ("Coefficient estimate", xyfont, (-1.33,1.3))
+    @df Sex_btdf scatter(:coef ,1:nrow(Sex_btdf), xerror = :err,legend = false,
+    xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
+    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000FullSexModelPlot.pdf"))
 
 
 ########################### Over trials median Survival rate ######################################
@@ -181,92 +260,17 @@ plot!(xaxis = xprop, yaxis = yprop, grid = true, size = (600,600))
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","PartialMedianRatePerTrial.pdf"))
 
 
-###########################  Model bootstrap ######################################
-Age_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
-Age_Basic = fit(MixedModel,Age_Basic_verb, Age_p, Bernoulli())
-Age_Full_verb = @formula(Leave ~ 1 + Streak_zscore * Age + LogOut_zscore * Age +  (1+Streak_zscore+LogOut_zscore|MouseID));
-Age_Full = fit(MixedModel,Age_Full_verb, Age_p, Bernoulli())
-MixedModels.likelihoodratiotest(Age_Basic,Age_Full)
-Age_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","1000AgeBootstrap.csv"),DataFrame)
-# Age_BootDf = bootstrapdf(Age_p, Age_Full; n = 1000)
-# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","1000AgeBootstrap.csv"),Age_BootDf)
-Age_btdf = Age_BootDf[[1,2,4,3,5,6],:]
-Age_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Age_btdf.err]
-Age_btdf.variable
-yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Age_btdf)),
-    [L"Intercept",L"Trial",L"PokeTime",L"Juveniles",
-    L"Trial \&",
-    L"PokeTime \&"]))
-    xprop = ("Coefficient estimate", xyfont, (-1.33,1.3))
-    Titolo = L"Persistent \Leftarrow \Rightarrow Impatient"
-    @df Age_btdf scatter(:coef ,1:nrow(Age_btdf), xerror = :err,legend = false,
-    xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
-    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","1000ModelPlot.pdf"))
-# leave_modelplt(Age_BootDf)
+
+###########################  Survival rate ######################################
+Age_SurvivalAn, Age_SurvivalAn_df = function_analysis(Age_s,:LogDuration, survivalrate_algorythm; grouping = :Age, calc = :bootstrapping)
+xprop = ("Poke Time (log10 s)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
+yprop = ("Survival rate", xyfont)
+plot!(Age_SurvivalAn, xaxis = xprop, yaxis = yprop, legend = false)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","SurvivalRate.pdf"))
 ##
-Cas_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
-Cas_Basic = fit(MixedModel,Cas_Basic_verb, Cas_p, Bernoulli())
-Cas_Full_verb = @formula(Leave ~ 1 + Streak_zscore * Virus + LogOut_zscore * Virus +  (1+Streak_zscore+LogOut_zscore|MouseID));
-Cas_Full = fit(MixedModel,Cas_Full_verb, Cas_p, Bernoulli())
-MixedModels.likelihoodratiotest(Cas_Basic,Cas_Full)
-# Cas_BootDf = bootstrapdf(Cas_p, Cas_Full, n = 1000)
-# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000CasBootstrap.csv"),Cas_BootDf)
-Cas_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000CasBootstrap.csv"), DataFrame)
-Cas_btdf = Cas_BootDf[[1,2,4,3,5,6],:]
-Cas_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Cas_btdf.err]
-Cas_btdf.variable
-yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Cas_btdf)),
-    [L"Intercept",L"Trial",L"PokeTime",L"Caspase",
-    L"Trial \&",
-    L"PokeTime\&"]))
-    xprop = ("Coefficient estimate", xyfont, (-1.4,1.35))
-    @df Cas_btdf scatter(:coef ,1:nrow(Cas_btdf), xerror = :err,legend = false,
-    xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
-    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000ModelPlot.pdf"))
-# leave_modelplt(Cas_BootDf)
-
-
-########################## Incorrect scatter ######################################
-Age_Inc = Difference(Age_s, :Age, :IncorrectLeave; ind_summary = incorrect_fraction, ylabel = "Fraction of premature leaving")
-Age_Inc.plt
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","Incorrect_test.pdf"))
-##
-Cas_Inc = Difference(Cas_s, :Virus, :IncorrectLeave; ind_summary = incorrect_fraction, ylabel = "Fraction of premature leaving")
-Cas_Inc.plt
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","Incorrect_test.pdf"))
-
-
-########################### Age Sex Model bootstrap ######################################
-###########################  Leving rate ######################################
-Sex_LevingAn, Sex_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative_algorythm;
-    grouping = :Sex, calc = :bootstrapping, color = [:violetred3 :sandybrown])
-    xprop = ("Time (log10 s)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
-    yprop = ("Pbrobablity of leaving", xyfont)
-    plot!(Sex_LevingAn, xaxis = xprop, yaxis = yprop, legend = (0.8, 0.25))
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","SexLevingRate.pdf"))
-########################### Age Sex Model bootstrap #####################################
-Age_Sex_verb = @formula(Leave ~ 1 + Streak_zscore*Sex + LogOut_zscore*Sex +  (1+Streak_zscore+LogOut_zscore|MouseID));
-Age_Sex = fit(MixedModel,Age_Sex_verb, Age_p, Bernoulli())
-MixedModels.likelihoodratiotest(Age_Basic,Age_Sex)
-# Sex_BootDf = bootstrapdf(Age_p, Age_Sex; n = 1000)
-# CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000SexBootstrap.csv"),Sex_BootDf)
-Sex_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000SexBootstrap.csv"),DataFrame)
-Sex_btdf = Sex_BootDf[[1,4,2,3,5,6],:]
-Sex_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Sex_btdf.err]
-Sex_btdf.names
-open_html_table(Sex_btdf)
-yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Sex_btdf)),
-    [L"Intercept",L"PokeTime",L"Trial",L"Male",
-    L"Trial \&",
-    L"PokeTime \&"]))
-    xprop = ("Coefficient estimate", xyfont, (-1.33,1.3))
-    Titolo = L"Persistent \Leftarrow \Rightarrow Impatient"
-    @df Sex_btdf scatter(:coef ,1:nrow(Sex_btdf), xerror = :err,legend = false,
-    xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
-    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000SexModelPlot.pdf"))
+Cas_SurvivalAn, Cas_SurvivalAn_df = function_analysis(Cas_s,:LogDuration, survivalrate_algorythm; grouping = :Virus, calc = :bootstrapping)
+plot!(Cas_SurvivalAn, xaxis = xprop, yaxis = yprop, legend = false)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","SurvivalRate.pdf"))
 
 
 ########################### NumPokes scatter ######################################
