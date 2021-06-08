@@ -3,8 +3,6 @@ module FLPDevelopment
 using Reexport
 @reexport using FLPprocess, DataFrames, CSV, Dates, CategoricalArrays
 @reexport using StatsBase, HypothesisTests, Bootstrap, MixedModels, Random, Survival
-# @reexport using Optim, GLM, GaussianMixtures
-# @reexport using Distributions, KernelDensity,
 @reexport using StatsPlots, StatsPlots.PlotMeasures, LaTeXStrings
 import Statistics: median, std
 
