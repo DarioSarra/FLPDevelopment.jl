@@ -1,5 +1,6 @@
+## Modules call
 using Revise, FLPDevelopment, BrowseTables
-##
+## Plot settings
 # Font size and type
 xyfont = font(18, "Bookman Light")
 legfont = font(14, "Bookman Light")
@@ -20,7 +21,7 @@ pgfplotsx(size = fig_size,
     titlefont = xyfont,
     guidefont = xyfont,
     legendfont = legfont)
-##
+## Load and adjust data
 include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
 for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
@@ -29,77 +30,46 @@ for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
     r.MouseID != "RJ58" && # blind
     r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
     !(r.MouseID in first_females_group) &&
-    # r.Streak >= 10 && #checking
     r.ProtocolSession == 1
-    # r.Performance > 25 && no need because minimum is 31
-    # previously tried filters
-    # r.MouseID != "RJ27" && # water leak
-    # r.MouseID != "RJ35" && # water leak
-    # r.MouseID != "RJ43" && # water leak
-    # r.MouseID != "RJ57" && # biting, see B1_RJ57_2020-09-28 minute 20:38
-    # r.MouseID != "RJ70" && # biting, see B1_RJ70_2020-09-28 minute 24:23
-    # !(r.MouseID in second_females_juveniles) &&
-    # !(r.MouseID in sixty_days_old) &&
     ,df)
 end
 for df in (Cas_p, Cas_b, Cas_s)
-    filter!(r -> r.Gen == "Rbp4-cre", df)
+    filter!(r -> r.Gen == "Rbp4-cre", df) # exclude wild type animals
 end
-# fAge_p = filter(r->r.PokeDur > 0.3 &&
-#     (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
-#     (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
-#     Age_p)
-#     gd = groupby(fAge_p,[:MouseID,:Session,:Age,:Sex])
-#     agedf = combine(gd) do dd
-#         process_streaks(dd)
-#     end
-# fCas_p = filter(r->r.PokeDur > 0.3 &&
-#     (r.Reward || ismissing(r.PostInterpoke) || (r.PostInterpoke > 0.1)) &&
-#     (r.Reward || r.PreInterpoke == 0 || ismissing(r.PreInterpoke) || (r.PreInterpoke > 0.1)),
-#     Cas_p)
-#     gd = groupby(fCas_p,[:MouseID,:Session,:Virus])
-#     casdf = combine(gd) do dd
-#         process_streaks(dd)
-#     end
-# agedf[!,:BinnedStreak] = bin_axis(agedf.Streak; unit_step = 5)
-# casdf[!,:BinnedStreak] = bin_axis(casdf.Streak; unit_step = 5)
-#=
-    Figure 1:
-        - Example Session
-        - Medain survival
-        - Survival rate
-        - Leaving time over trial
-        - Model bootstrap
-        - AfterLast scatter
-        - Incorrect scatter
-=#
+#adjustments for pokes DataFrames
 for pokedf in [Age_p, Cas_p]
+    # transform time in log 10 scale
     pokedf.LogOut = log10.(pokedf.Out)
     pokedf.LogInterpoke = log10.(pokedf.PostInterpoke)
+    # zscore values for logistic regression
     transform!(pokedf, [:Streak, :Out, :LogOut] .=> zscore)
 end
+#adjustments for trials DataFrames
 for streakdf in [Age_s, Cas_s]
+    # transform time in log 10 scale
     streakdf.LogDuration = log10.(streakdf.Trial_Duration)
     streakdf.ElapsedTime = log10.(streakdf.AfterLast_Duration .+ 0.1)
     streakdf.LogTravel = log10.(streakdf.Travel_to)
-    streakdf.BinnedStreak = bin_axis(streakdf.Streak; unit_step = 4)
+    # bin trials
+    # streakdf.BinnedStreak = bin_axis(streakdf.Streak; unit_step = 4)
+    # streakdf.BlockBinnedStreak = bin_axis(streakdf.Streak; unit_step = 15)
     streakdf.LongBinnedStreak = bin_axis(streakdf.Streak; unit_step = 20)
-    streakdf.BlockBinnedStreak = bin_axis(streakdf.Streak; unit_step = 15)
     transform!(streakdf, :Streak .=> zscore)
 end
 open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
 open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
 ########################### Example Session Plots ######################################
+## Adult example session
 lowertrial = 20
 uppertrial = 45
 tt = filter(r -> r.MouseID == "RJ23" && lowertrial <= r.Streak <= uppertrial, Age_p)
 session_plot(tt)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","AdultSession.pdf"))
-##
+## Juvenile example session
 tt = filter(r -> r.MouseID == "RJ02" && lowertrial <= r.Streak <= uppertrial, Age_p)
 session_plot(tt)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","JuvenileSession.pdf"))
-##################
+## Well trained example session
 comp_df = CSV.read("/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Stimulations/DRN_Opto_again/pokesDRN_Opto_again.csv", DataFrame)
 comp90 = filter(r-> r.Protocol == "90/90", comp_df)
 sessions = union(comp90.Session)
@@ -107,11 +77,12 @@ tt = filter(r-> r.Session == sessions[99] && lowertrial <= r.Streak <= uppertria
 transform!(groupby(tt, [:Session, :Streak]), [:PokeIn, :PokeOut] => ((i,o) -> (In = i .- i[1], Out = o .- i[1])) => AsTable)
 session_plot(tt)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","TrainedSession.pdf"))
-########################### Duty cycle ######################################
+########################### Poking rate ######################################
+# Age experiment
 # calculate the total amount of time spent in poking and the trial duration
 Age_df = combine(groupby(Age_p, [:MouseID,:Streak, :Age]), :PokeDur => sum => :PokingTime,
     [:PokeIn, :PokeOut] => ((i,o) -> o[end] - i[1]) => :TrialDuration)
-# calculate the fraction of time spent poking per trial: poking rate
+# calculate the fraction of time spent poking per trial: Poking rate
 Age_df.PokingRate = Age_df.PokingTime./Age_df.TrialDuration
 # Test the difference in the poking rate for age group
 Age_Poking = Difference(Age_df, :Age, :PokingRate; ind_summary = median, ylabel = "Poking rate", ylims = (0,1))
@@ -119,7 +90,7 @@ Age_Poking.plt
 Age_Poking.groupdf
 Age_Poking.test
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","DutyCycle_test.pdf"))
-###
+## Same for ablation experiment
 Cas_df = combine(groupby(Cas_p, [:MouseID,:Streak, :Virus]), :PokeDur => sum => :PokingTime, [:PokeIn, :PokeOut] => ((i,o) -> o[end] - i[1]) => :TrialDuration)
 Cas_df.PokingRate = Cas_df.PokingTime ./ Cas_df.TrialDuration
 Cas_Poking = Difference(Cas_df, :Virus, :PokingRate; ind_summary = median, ylabel = "Poking rate", ylims = (0,1))
