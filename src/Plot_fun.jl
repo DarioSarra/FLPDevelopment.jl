@@ -79,8 +79,9 @@ function median_ci_scatter(df, grouping, var; ind_summary = mean)
 end
 
 function add_info!(plt, df, p, e; normality = false, ylims = nothing)
-    plt_lim = maximum(df.Central .+ last.(df.ERR))
-    plt_span = plt_lim/10
+    plt_lim = isnothing(ylims) ? maximum(df.Central .+ last.(df.ERR)) : last(ylims) - (last(ylims) - first(ylims))/5
+    plt_bot = isnothing(ylims) ? minimum(df.Central .+ first.(df.ERR)) : first(ylims)
+    plt_span = (plt_lim-plt_bot)/10
     ref, span = plt_lim + plt_span, plt_span/2
     add_bar!(plt, ref, span)
     if p >= 0.05
@@ -173,4 +174,21 @@ function mediansurvival_analysis(streakdf,variable, grouping; plt = plot())
         # xlims = (-0.25,2.25), xlabel = "Group",
         ylabel = "Median survival time", label = "")
     return plt
+end
+##
+function summarizexy(df,x,y; group = "none", bin = true, digits = 1)
+    if bin
+        xcol = Symbol("Binned"*string(x))
+        df[:,xcol] = round.(df[:,x],digits = digits)
+    else
+        xcol = x
+    end
+    standardgroup = [xcol]
+    group == "none" ? (grouping = standardgroup) : (grouping = vcat(standardgroup,group))
+    df1 = combine(groupby(df,vcat(grouping,:MouseID)), y => mean => y)
+    # df2 = combine(groupby(df, group)) do dd
+    #     group_summary(dd,xcol,y; normality = false)#
+    # end
+    df2 = combine(groupby(df1,grouping), y .=> [mean, sem])
+    sort!(df2,grouping)
 end
