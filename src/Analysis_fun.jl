@@ -81,3 +81,26 @@ function hazardrate_algorythm(var; step = 0.05, xaxis = nothing)
     hazard = -pushfirst!(diff(survival),0)./survival
     return (Xaxis = collect(xaxis), fy = hazard)
 end
+
+"""
+    `bootstrapdf(df, mdl; grouping = nothing, n = 100)`
+    bootstrap a model results and saves it in a dataframes to store as csv
+"""
+function bootstrapdf(df, mdl; grouping = nothing, n = 100)
+    rng = MersenneTwister(1234321)
+    samp1 = parametricbootstrap(rng,n,mdl)
+    sampdf = DataFrame(samp1.allpars)
+    bootdf = combine(groupby(sampdf,[:type, :group, :names]), :value => shortestcovint => :interval)
+    filter!(r -> ismissing(r.group), bootdf)
+    bootdf.coef = coef(mdl)
+    isnothing(grouping) && (grouping = check_group(df))
+    cases = levels(df[:,grouping])
+    try (bootdf.variable = ["Intercept", "Trial", "$grouping: $(cases[2])", "Poke-time",
+        "Trial & $grouping: $(cases[2])",
+        "Poke-time & $grouping: $(cases[2])"])
+    catch
+        println("didn't work ")
+    end
+    transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
+    return bootdf
+end

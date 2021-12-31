@@ -3,9 +3,9 @@
     Given poke information as a DataFrame row compose a box whose y position is
     equal to the trial number, and its x extension is given by the poke duration
 """
-function streakpoke(r::DataFrames.DataFrameRow)
-    y_start = r.Streak - 0.25
-    y_finish = r.Streak + 0.25
+function streakpoke(r::DataFrames.DataFrameRow;ordered = false)
+    y_start = ordered ? r.order - 0.25 : r.Streak - 0.25
+    y_finish = ordered ? r.order + 0.25 : r.Streak + 0.25
     x_start = r.In
     x_finish = r.Out
     Shape([(x_start,y_start),(x_start,y_finish),(x_finish,y_finish),(x_finish, y_start),(x_start,y_start)])
@@ -38,8 +38,8 @@ end
      figure with its positioned and color given by the trial number, poke time
      and outcome.
 """
-function session_plot!(p,r::DataFrames.DataFrameRow)
-    bp = streakpoke(r)
+function session_plot!(p,r::DataFrames.DataFrameRow;ordered = false)
+    bp = streakpoke(r;ordered = ordered)
     fcol = outcome_col(r)
     plot!(p,bp, fillcolor = plot_color(fcol, 0.6),linecolor = :black,linewidth = 1)
     side_annotate!(p,r)
@@ -52,14 +52,14 @@ end
      a box per each box.
 """
 
-function session_plot(df::DataFrames.AbstractDataFrame)
+function session_plot(df::DataFrames.AbstractDataFrame; ordered = false)
     xyfont = font(18, "Bookman Light")
     legfont = font(14, "Bookman Light")
     xprop = ("Time (seconds)", (-1,16), xyfont)
     yprop = ("Trials", xyfont,false, false)
     plt = plot(legend = false, xaxis = xprop, yaxis = yprop, yticks = false)
     for r in eachrow(df)
-        FLPDevelopment.session_plot!(plt, r)
+        FLPDevelopment.session_plot!(plt, r;ordered = ordered)
     end
     plt
 end

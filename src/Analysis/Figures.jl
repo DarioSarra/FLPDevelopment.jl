@@ -12,15 +12,24 @@ ps_y = pixel_factor * 1
 fig_size = (ps_x, ps_y)
 
 theme(:default)
-pgfplotsx(size = fig_size,
+gr(size = fig_size,
+    titlefont = font(14, "Bookman Light"),
+    guidefont = font(14, "Bookman Light"),
     tick_orientation = :out,
     grid = false,
     markerstrokecolor = :black,
     markersize = 8,
     thickness_scaling = 1.5,
-    titlefont = xyfont,
-    guidefont = xyfont,
-    legendfont = legfont)
+    legendfont = font(10, "Bookman Light"))
+# pgfplotsx(size = fig_size,
+#     tick_orientation = :out,
+#     grid = false,
+#     markerstrokecolor = :black,
+#     markersize = 8,
+#     thickness_scaling = 1.5,
+#     titlefont = xyfont,
+#     guidefont = xyfont,
+#     legendfont = legfont)
 ## Load and adjust data
 include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
@@ -48,8 +57,8 @@ end
 #adjustments for trials DataFrames
 for streakdf in [Age_s, Cas_s]
     # transform time in log 10 scale
-    streakdf.LogDuration = log10.(streakdf.Trial_Duration)
-    streakdf.ElapsedTime = log10.(streakdf.AfterLast_Duration .+ 0.1)
+    streakdf.LogDuration = log10.(streakdf.Trial_duration)
+    # streakdf.ElapsedTime = log10.(streakdf.AfterLast_Duration .+ 0.1)
     streakdf.LogTravel = log10.(streakdf.Travel_to)
     # bin trials
     # streakdf.BinnedStreak = bin_axis(streakdf.Streak; unit_step = 4)
@@ -72,6 +81,10 @@ session_plot(tt)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig1","JuvenileSession.pdf"))
 ## Well trained example session
 comp_df = CSV.read("/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Stimulations/DRN_Opto_again/pokesDRN_Opto_again.csv", DataFrame)
+mother1 = replace(path,basename(path)=>"")[1:end-1]
+mother2 = replace(mother1,basename(mother1)=>"")
+comp_df = CSV.read(joinpath(mother2,"Stimulations","DRN_Opto_again","pokesDRN_Opto_again.csv"))
+path
 comp90 = filter(r-> r.Protocol == "90/90", comp_df)
 sessions = union(comp90.Session)
 tt = filter(r-> r.Session == sessions[99] && lowertrial <= r.Streak <= uppertrial, comp90)
@@ -220,19 +233,20 @@ yprop = ("Median laeving time(seconds)", xyfont,(log(1),log10(30)),(log10.([1,5,
 plot!(xaxis = xprop, yaxis = yprop, grid = true, size = (600,600))
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","PartialMedianRatePerTrial.pdf"))
 
-Cas_TrialMedianSurvival = plt = plot()
+Cas_TrialMedianSurvival = plot()
 combine(groupby(Cas_s,:Virus)) do dd
     mediansurvival_analysis(dd,:LogDuration,:LongBinnedStreak; plt = Cas_TrialMedianSurvival)
 end
 Cas_TrialMedianSurvival
 plot!(xaxis = xprop, yaxis = yprop, grid = true, size = (600,600))
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","PartialMedianRatePerTrial.pdf"))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig7","PartialMedianRatePerTrial.pdf"))
 ##
 ################# New attempts asked by Zack
 ###################################
 ## Filtered survival cumulative
 Age_max60 = filter(r->r.LogDuration <= log10(60), Age_s)
-Age_LevingAn, Age_LevingAn_df = function_analysis(Age_max60,:LogDuration, cumulative_algorythm; grouping = :Age, calc = :bootstrapping)
+Age_max60.LogDuration
+Age_LevingAn, Age_LevingAn_df = function_analysis(Age_max60, :LogDuration, cumulative_algorythm; grouping = :Age, calc = :bootstrapping)
 xprop = ("Poke Time(seconds)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
 yprop = ("Probablity of leaving", xyfont)
 plot!(Age_LevingAn, xaxis = xprop, yaxis = yprop, legend = false)
@@ -320,17 +334,21 @@ Inter_m2 = fit(MixedModel,Inter_v2, Age_p)
 MixedModels.likelihoodratiotest(Inter_m1,Inter_m2)
 ###########################################################After Zach email
 ################################################################## Poking Behavior
-## Long leaving times
-@df Age_s density(:Trial_Duration, xlabel = "Leaving times", ylabel = "PDF")
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Leaving","Fig. 2Cnew.pdf"))
-println.(propertynames(Age_s))
+
 ## Cut Leaving times
-Age_max60 = filter(r->r.LogDuration <= log10(60), Age_s)
-Filt_Age = Difference(Age_max60,:Age,:LogDuration, ind_summary = median, ylabel = "Median leaving time", ylims = (0,1.5))
+Age_max60 = filter(r->r.Trial_duration <= 60, Age_s)
+Filt_Age = Difference(Age_max60,:Age,:Trial_duration, ind_summary = median, ylabel = "Trial duration (seconds)", ylims = (0,12))
 Filt_Age.plt
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Leaving","CutMedianLeavingTime.pdf"))
 Filt_Age.test
 Filt_Age.groupdf
+Cas_max60 = filter(r->r.Trial_duration <= 60, Cas_s)
+Filt_Cas = Difference(Cas_max60,:Virus,:Trial_duration, ind_summary = median, ylabel = "Trial duration (seconds)", ylims = (0,12))
+Filt_Cas.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Leaving","CutMedianLeavingTime.pdf"))
+Filt_Cas.test
+Filt_Cas.groupdf
+
 ##Port occupancy by trials
 Age_df = combine(groupby(Age_p, [:MouseID,:Streak, :Age]), :PokeDur => sum => :PokingTime,
     [:PokeIn, :PokeOut] => ((i,o) -> o[end] - i[1]) => :TrialDuration)
@@ -367,10 +385,106 @@ Occupancy_v2 = @formula(Occupancy_zscore ~ 1 + LogOut_zscore * Age + (1+LogOut_z
 Occupancy_m1 = fit(MixedModel,Occupancy_v1, occupancy_df)
 Occupancy_m2 = fit(MixedModel,Occupancy_v2, occupancy_df)
 MixedModels.likelihoodratiotest(Occupancy_m1,Occupancy_m2)
+OccupancyAge_BootDf = bootstrapdf(occupancy_df, Occupancy_m2; n = 1000)
+OccupancyAge_BootDf.names = ["Intercept", "PokeTime","Group:Juveniles","PokeTime&Group:Juveniles"]
+OccupancyAge_BootDf.Y = 1:nrow(OccupancyAge_BootDf)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","1000AgeOccupancyBootstrap.csv"),OccupancyAge_BootDf)
+yprop = ("",font(4, "Bookman Light"),(collect(1:nrow(OccupancyAge_BootDf)),
+    ["Intercept","PokeTime","Group:Juveniles","PokeTime&\nGroup:Juveniles"]))
+    xprop = ("Coefficient estimate", font(10, "Bookman Light"), (-1.1,0.2))
+    @df OccupancyAge_BootDf scatter(:coef ,1:nrow(OccupancyAge_BootDf), xerror = :err,legend = false,
+    xaxis = xprop, yaxis = yprop, markercolor = :gray75, size = (600,600))
+    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
+    annotate!([(-1,1,"n.s", 10), (-1,2,"*", 10), (-1,3,"*", 10), (-1,4,"n.s", 10)])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","AgeBootstrap.pdf"))
 
-@df Age_p density(:Occupancy, group = :Age, ylabel = "PDF", xlabel = "Fraction of time poking", legend = :topleft)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Occupancy","PDFOverTime.pdf"))
+## same for cas
+##Port occupancy by pokes
+transform!(groupby(Cas_p,[:MouseID, :Streak]), :PokeDur => cumsum => :CumDuration)
+Cas_p.Occupancy = Cas_p.CumDuration ./ Cas_p.Out
+occupancy_df = filter(r -> r.PokeInStreak > 0, Cas_p)
 
+# @df occupancy_df density(:Occupancy, group = :Virus, ylabel = "Kernel density", xlabel = "Fraction of time poking")
+#time spent poking as a function of time elapsed
+df = FLPDevelopment.summarizexy(occupancy_df,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1)
+@df filter(r -> !isnan(r.Occupancy_sem), df) plot(:BinnedLogOut,:Occupancy_mean, ribbon = :Occupancy_sem, group = :Virus,
+    xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
+# @df df plot(:BinnedLogOut,:Central, ribbon = :ERR, group = :Virus,
+#     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig7","CaspaseOverTime.pdf"))
+
+occupancy_df.Occupancy_zscore = zscore(occupancy_df.Occupancy)
+Occupancy_v1 = @formula(Occupancy_zscore ~ 1 + LogOut_zscore + (1+LogOut_zscore|MouseID));
+Occupancy_v2 = @formula(Occupancy_zscore ~ 1 + LogOut_zscore * Virus + (1+LogOut_zscore|MouseID));
+Occupancy_m1 = fit(MixedModel,Occupancy_v1, occupancy_df)
+Occupancy_m2 = fit(MixedModel,Occupancy_v2, occupancy_df)
+MixedModels.likelihoodratiotest(Occupancy_m1,Occupancy_m2)
+OccupancyCas_BootDf = bootstrapdf(occupancy_df, Occupancy_m2; n = 1000)
+OccupancyCas_BootDf.names = ["Intercept", "PokeTime","Group:Caspase","PokeTime&Group:Juveniles"]
+OccupancyCas_BootDf.Y = 1:nrow(OccupancyCas_BootDf)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig7","1000CasOccupancyBootstrap.csv"),OccupancyCas_BootDf)
+yprop = ("",font(4, "Bookman Light"),(collect(1:nrow(OccupancyCas_BootDf)),
+    ["Intercept","PokeTime","Group:Caspase","PokeTime&\nGroup:Caspase"]))
+    xprop = ("Coefficient estimate", font(10, "Bookman Light"), (-1.1,0.2))
+    @df OccupancyCas_BootDf scatter(:coef ,1:nrow(OccupancyCas_BootDf), xerror = :err,legend = false,
+    xaxis = xprop, yaxis = yprop, markercolor = :gray75, size = (600,600))
+    vline!([0], linecolor = :red, legend = false, linestyle = :dash)
+    annotate!([(-1,1,"n.s", 10), (-1,2,"*", 10), (-1,3,"n.s.", 10), (-1,4,"*", 10)])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig7","CasBootstrap.pdf"))
+## Long leaving times
+@df Age_s density(:Trial_duration, xlabel = "Leaving times", ylabel = "PDF")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Leaving","Fig. 2Cnew.pdf"))
+@df Cas_s density(:Trial_duration, xlabel = "Leaving times", ylabel = "PDF")
+mother1 = replace(path,basename(path)=>"")[1:end-1]
+mother2 = replace(mother1,basename(mother1)=>"")
+comp_df = CSV.read(joinpath(mother2,"Stimulations","DRN_Opto_again","streaksDRN_Opto_again.csv"))
+comp90 = filter(r-> r.Protocol == "90/90", comp_df)
+Age = Age_s[:,[:MouseID,:Trial_duration]]
+Age[!,:Condition] = "Naive_".*Age_s[:,:Age]
+Comp = comp90[:,[:MouseID,:Trial_duration]]
+Comp[!,:Condition] .=  "Trained"
+whole = vcat(Age,Comp)
+@df whole density(:Trial_duration, group = :Condition)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","TrialDuration1.pdf"))
+xaxis!(xlims = (0,150))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","TrialDuration2.pdf"))
+whole[!,:LogDuration] = log10.(whole.Trial_duration)
+@df whole density(:LogDuration, group = :Condition,
+    xlabel = "Elapsed time (log10 seconds)", ylabel = "Kernell density estimate")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","TrialDuration3.pdf"))
+##
+## Reward obtained over time
+
+transform!(groupby(Age_p,[:MouseID,:Age,:Session]), :Reward => cumsum => :CumReward)
+Age_p.RewRate = Age_p.CumReward./Age_p.PokeOut
+Age_RewTime = Difference(Age_p, :Age, :RewRate; ind_summary = mean, ylabel = "Rewards per second", ylims = (0,0.04))
+Age_RewTime.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Reward","RewardRateSecodns.pdf"))
+
+Age_Rew = Difference(Age_s, :Age, :Num_Rewards; ind_summary = mean, ylabel = "Median rewards per trial", ylims = (0,1.2))
+Age_Rew.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Reward","RewardTrial.pdf"))
+
+
+checkRew = filter(r->r.PokeOut <= 60*60, Age_p)
+checkRew2 = combine(groupby(checkRew,[:Age,:MouseID]), :CumReward => maximum => :Rew)
+checkRew2.RewRate = checkRew2.Rew./(60*60)
+checkRew3 = Difference(checkRew2, :Age,:RewRate, ylims = (0,0.03), ylabel = "Reward rate (1 hour)")
+checkRew3.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Reward","RewardRate1hour.pdf"))
+
+
+Age_RewTime.groupdf
+Age_RewTime.test
+Age_p.BinnedTime = Int64.(round.(Age_p.PokeOut./60))
+
+RewRate_df = FLPDevelopment.summarizexy(Age_p,:BinnedTime,:CumReward, group = :Age, bin = false)
+filter!(r -> !isnan(r.CumReward_sem),RewRate_df)
+@df RewRate_df plot(:BinnedTime,:CumReward_mean, ribbon = :CumReward_sem, group = :Age,
+    xlims = (0,60), xlabel = "Elapsed time (minutes)", ylabel = "Cumulative Rewards", legend = :topleft)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Reward","RewardRate.pdf"))
+RewRate_v2 = @formula(CumReward ~ 1 + PokeOut + Age + PokeOut&Age + (1+PokeOut|MouseID))
+RewRate_m2 = fit(MixedModel,RewRate_v2,Age_p)
 ##
 # Test the difference in the poking rate for age group
 Age_Poking = Difference(Age_p, :Age, :PokeDur; ind_summary = median, ylabel = "Poke duration (seconds)", ylims = (0,1.3))

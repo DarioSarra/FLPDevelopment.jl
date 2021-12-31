@@ -16,7 +16,9 @@ for df in (Cas_p, Cas_b, Cas_s)
     df[!,:Virus] = [get(VirusDict,x,"Missing") for x in df.MouseID]
     df[!,:Sex] = [x in females ? "F" : "M" for x in df.MouseID]
     # df[!,:PreInterpoke] = [ismissing(x) ? 0.0 : x for x in df.PreInterpoke]
-    transform!(df, :Virus => categorical, renamecols=false)
+    # transform!(df, :Virus => categorical, renamecols=false)
+    transform!(df, :Virus => categorical => :Virus)
+
     gd = groupby(df,:Session)
     transform!(gd, :Streak => maximum => :Performance)
 end

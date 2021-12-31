@@ -18,7 +18,7 @@ export first_females_group, second_females_group
 export median, std
 export frequency, fraction_true, bin_axis
 export session_plot, maintitle!
-export individual_summary, group_summary
+export individual_summary, group_summary, bootstrapdf
 export function_analysis, survivalrate_algorythm, cumulative_algorythm, hazardrate_algorythm, mediansurvival_analysis
 export incorrect_fraction, median_ci_scatter
 export add_bar!, add_info!, Difference
