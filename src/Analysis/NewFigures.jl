@@ -74,8 +74,8 @@ uppertrial = 45
 tt = filter(r -> r.MouseID == "RJ23" && lowertrial <= r.Streak <= uppertrial, Age_p)
 tt = filter(r -> r.MouseID == "RJ23", Age_p)
 t1 = filter(r -> r.Leave, tt)
-t2 = sort(t1,[:Out])
-order = Dict(1:nrow(t2) .=> t2.Streak)
+sort!(t1,[:Out])
+order = Dict(t1.Streak .=> 1:nrow(t1))
 tt.order = [get(order,x,0) for x in tt.Streak]
 sort!(tt, :order)
 plt = session_plot(tt; ordered = true)
@@ -123,8 +123,9 @@ Age_filt = Difference(Age_max60,:Age,:Trial_duration, ind_summary = mean,
 Age_filt.plt
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","December2021","Fig2","Age_FilteredTrialDur.pdf"))
 ## Age Survival Plot
-Age_p
-Cas_p
+filter(r-> r.Age == "Juveniles",Age_s)
+filter(r-> r.Virus == "tdTomato",Cas_s)
+
 Age_LevingAn, Age_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative_algorythm; grouping = :Age, calc = :bootstrapping)
 xprop = ("Poke Time(seconds)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
 yprop = ("Probablity of leaving", xyfont)
@@ -154,3 +155,37 @@ yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Age_btdf)),
     @df Age_btdf scatter(:coef ,1:nrow(Age_btdf), xerror = :err,legend = false,
     xaxis = xprop, yaxis = yprop, markercolor = :gray75, title = Titolo)
     vline!([0], linecolor = :red, legend = false, linestyle = :dash)
+## Num Pokes
+Age_np = Difference(Age_s, :Age, :Num_pokes; ylabel = "Number of pokes", ylims = (0,6.5))
+Age_np.plt
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","December2021","Pokes","AgeNpokes.pdf"))
+Cas_np = Difference(Cas_s, :Virus, :Num_pokes; ylabel = "Number of pokes", ylims = (0,6.5))
+Cas_np.plt
+Cas_np.test
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","December2021","Pokes","CasNpokes.pdf"))
+## Caspase example session
+tt = filter(r -> r.MouseID == "CD10", Cas_p)
+combine(groupby(Cas_p, [:MouseID]), :Virus => union)
+t1 = filter(r -> r.Leave, tt)
+sort!(t1,[:Out])
+order = Dict(t1.Streak .=> 1:nrow(t1))
+tt.order = [get(order,x,0) for x in tt.Streak]
+sort!(tt, :order)
+plt = session_plot(tt; ordered = true)
+xaxis!(plt, xlims = :auto)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","December2021","Pokes","CaspaseSession.pdf"))
+## tdTomato example session
+tt = filter(r -> r.MouseID == "CD17", Cas_p)
+combine(groupby(Cas_p, [:MouseID]), :Virus => union)
+t1 = filter(r -> r.Leave, tt)
+sort!(t1,[:Out])
+order = Dict(t1.Streak .=> 1:nrow(t1))
+tt.order = [get(order,x,0) for x in tt.Streak]
+sort!(tt, :order)
+plt = session_plot(tt; ordered = true)
+xaxis!(plt, xlims = :auto)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","December2021","Pokes","tdTomatoSession.pdf"))
+## Virus trial duration density
+@df Cas_s density(:LogDuration, group = :Virus,
+    xlabel = "Elapsed time (log10 seconds)", ylabel = "Kernell density estimate")
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","December2021","Fig2","VirusDensityTrialDuration.pdf"))
