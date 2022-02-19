@@ -3,7 +3,7 @@ module FLPDevelopment
 using Reexport
 @reexport using FLPprocess, DataFrames, CSV, Dates, CategoricalArrays
 @reexport using StatsBase, HypothesisTests, Bootstrap, MixedModels, Random, Survival
-@reexport using StatsPlots, StatsPlots.PlotMeasures, LaTeXStrings
+@reexport using StatsPlots, StatsPlots.PlotMeasures, LaTeXStrings, KernelDensity
 import Statistics: median, std
 
 include("groups.jl")

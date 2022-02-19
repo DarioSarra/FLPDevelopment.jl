@@ -23,13 +23,14 @@ function outcome_col(r::DataFrames.DataFrameRow)
     return fcol
 end
 
-function side_annotate!(p,r::DataFrames.DataFrameRow)
+function side_annotate!(p,r::DataFrames.DataFrameRow; ordered = false)
     if typeof(r.Side) <: Real
         side =  r.Side == 0 ? "R" : "L"
     else
         side = r.Side
     end
-    annotate!(p,[(-0.5, r.Streak, Plots.text(side, 4, :center))])
+    y_val = ordered ? r.order : r.Streak
+    annotate!(p,[(-0.5, y_val, Plots.text(side, 4, :center))])
 end
 
 """
@@ -38,11 +39,11 @@ end
      figure with its positioned and color given by the trial number, poke time
      and outcome.
 """
-function session_plot!(p,r::DataFrames.DataFrameRow;ordered = false)
+function session_plot!(p,r::DataFrames.DataFrameRow; ordered = false)
     bp = streakpoke(r;ordered = ordered)
     fcol = outcome_col(r)
     plot!(p,bp, fillcolor = plot_color(fcol, 0.6),linecolor = :black,linewidth = 1)
-    side_annotate!(p,r)
+    side_annotate!(p,r; ordered = ordered)
     p
 end
 

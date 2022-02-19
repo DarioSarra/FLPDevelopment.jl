@@ -176,7 +176,7 @@ function mediansurvival_analysis(streakdf,variable, grouping; plt = plot())
     return plt
 end
 ##
-function summarizexy(df,x,y; group = "none", bin = true, digits = 1)
+function summarizexy(df,x,y; group = "none", bin = true, digits = 1, calc = :mean)
     if bin
         xcol = Symbol("Binned"*string(x))
         df[:,xcol] = round.(df[:,x],digits = digits)
@@ -186,9 +186,14 @@ function summarizexy(df,x,y; group = "none", bin = true, digits = 1)
     standardgroup = [xcol]
     group == "none" ? (grouping = standardgroup) : (grouping = vcat(standardgroup,group))
     df1 = combine(groupby(df,vcat(grouping,:MouseID)), y => mean => y)
-    # df2 = combine(groupby(df, group)) do dd
-    #     group_summary(dd,xcol,y; normality = false)#
-    # end
-    df2 = combine(groupby(df1,grouping), y .=> [mean, sem])
+    if calc == :mean
+        df2 = combine(groupby(df1,grouping), y .=> [mean, sem])
+    elseif calc == :bootstrapping
+        df2 = combine(groupby(df, group)) do dd
+            group_summary(dd,xcol,y; normality = false)#
+        end
+        df2[!,:low] = [x[1] for x in df2.ERR]
+        df2[!,:up] = [x[2] for x in df2.ERR]
+    end
     sort!(df2,grouping)
 end
