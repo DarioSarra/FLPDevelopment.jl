@@ -155,9 +155,9 @@ Age_LevingAn, Age_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative
 xprop = ("Poke Time(seconds)", xyfont,(log10.([0.1,1,10,100,1000]),["0.1","1","10","100","1000"]))
 yprop = ("Probablity of leaving", xyfont)
 plot!(Age_LevingAn, xaxis = xprop, yaxis = yprop, legend = false)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2","E","LevingRate.pdf"))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2","D","LevingRate.pdf"))
 rename!(Age_LevingAn_df, :LogDuration => :PokeTime)
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "D","LevingRate.csv"), Age_LevingAn_df)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "D","LevingRate.csv"), select(Age_LevingAn_df, Not([:up,:low])))
 ########################### E ###########################
 ##
 Age_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
@@ -177,15 +177,16 @@ Age_btdf.err = [tuple(parse.(Float64,split(x[2:end-1], ", "))...) for x in Age_b
 yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Age_btdf)),
     [L"Intercept",L"PokeTime",L"Trial",L"Juveniles",
     L"Trial \&",
-    L"PokeTime \&"]))
+    L"PokeTime \& Juveniles"]))
     xprop = ("Coefficient estimate", xyfont, (-1.33,1.3))
     Titolo = L"+ \Leftarrow Behavioural Control \Rightarrow -"
     @df Age_btdf scatter(:coef ,1:nrow(Age_btdf), xerror = :err,legend = false,
     xaxis = xprop, yaxis = yprop, markercolor = :gray75)
     vline!([0], linecolor = :red, legend = false, linestyle = :dash)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2","E","LevingRateBootstrap.pdf"))
+rename!(Age_btdf, :err => :CI)
 CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "E","LevingRateBootstrap.csv"),
-    select(Age_btdf, Not([:type,:group])))
+    select(Age_btdf, Not([:type,:group, :interval, :names])))
 ########################## F1 ###########################
 Age_Npokes = Difference(Age_s, :Age, :Num_pokes, ylabel = "number of pokes per trial", ylims = (0,5.5))
 Age_Npokes.plt
@@ -230,9 +231,8 @@ MixedModels.likelihoodratiotest(Occupancy_m1,Occupancy_m2)
 # OccupancyAge_BootDf.Y = 1:nrow(OccupancyAge_BootDf)
 # CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","1000AgeOccupancyBootstrap.csv"),OccupancyAge_BootDf)
 OccupancyAge_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedback","Occupancy","1000AgeOccupancyBootstrap.csv"), DataFrame)
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "H","AgeOccupancyBootstrap.csv"),
-    select(OccupancyAge_BootDf, Not([:type,:group,:Y])))
 OccupancyAge_BootDf[!,:err] = [tuple(parse.(Float64,split(x[2:end-1], ", "))...) for x in OccupancyAge_BootDf.err]
+OccupancyAge_BootDf[!, :variable] = ["Intercept","Poke-time","Age: Juveniles","Poke-time & Age: Juveniles"]
 xprop = (L"Coefficient estimate", xyfont, (-1.1,0.2))
 @df OccupancyAge_BootDf scatter(:coef ,1:nrow(OccupancyAge_BootDf), xerror = :err,legend = false,
     markercolor = :gray75, size = (600,600),
@@ -241,6 +241,9 @@ xprop = (L"Coefficient estimate", xyfont, (-1.1,0.2))
     vline!([0], linecolor = :red, legend = false, linestyle = :dash)
     annotate!([(-1,1,"n.s", 10), (-1,2,"*", 10), (-1,3,"*", 10), (-1,4,"n.s", 10)])
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2","H","AgeOccupancyBootstrap.pdf"))
+rename!(OccupancyAge_BootDf, :err => :CI)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "H","AgeOccupancyBootstrap.csv"),
+    select(OccupancyAge_BootDf, Not([:type,:group,:Y, :interval,:names])))
 ########################### Fig3 ###########################
 ########################### E ###########################
 @df Cas_s density(:LogDuration, group = :Virus,
@@ -278,7 +281,8 @@ yprop = ("Probablity of leaving", xyfont)
 plot!(Cas_SurvivalAn, xaxis = xprop, yaxis = yprop, legend = false)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3","G","VirusLeavingRate.pdf"))
 rename!(Cas_SurvivalAn_df, [:Central => :Median, :ERR => :CI, :LogDuration => :PokeTime])
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "G","VirusLevingRate.csv"), Cas_SurvivalAn_df)
+sort!(Cas_SurvivalAn_df,:Virus)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "G","VirusLevingRate.csv"), select(Cas_SurvivalAn_df, Not([:up,:low])))
 ########################### H ###########################
 ##
 Cas_Basic_verb = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore +  (1+Streak_zscore+LogOut_zscore|MouseID));
@@ -289,8 +293,6 @@ MixedModels.likelihoodratiotest(Cas_Basic,Cas_Full)
 # Cas_BootDf = bootstrapdf(Cas_p, Cas_Full, n = 1000)
 # CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000CasBootstrap.csv"),Cas_BootDf)
 Cas_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","Fig3","1000CasBootstrap.csv"), DataFrame)
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "H","VirusLevingRatBootstrap.csv"),
-    select(Cas_BootDf, Not([:type,:group])))
 Cas_btdf = Cas_BootDf[[1,4,2,3,5,6],:]
 Cas_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Cas_btdf.err]
 Cas_btdf.variable
@@ -303,18 +305,18 @@ yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Cas_btdf)),
     xaxis = xprop, yaxis = yprop, markercolor = :gray75)
     vline!([0], linecolor = :red, legend = false, linestyle = :dash)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "H","VirusLevingRatBootstrap.pdf"))
+rename!(Cas_BootDf, :err => :CI)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "H","VirusLevingRatBootstrap.csv"),
+    select(Cas_BootDf, Not([:type,:group, :interval, :names])))
 ########################### I ###########################
 ##Port occupancy by pokes
-# df = FLPDevelopment.summarizexy(Cas_p,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1)
-# filter!(r -> !isnan(r.Occupancy_sem), df)
-# @df df plot(:BinnedLogOut,:Occupancy_mean, ribbon = :Occupancy_sem, group = :Virus,
-#     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
 CasOcc = FLPDevelopment.summarizexy(Cas_p,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1, calc = :bootstrapping)
 rename!(CasOcc,[:Central => :Median, :ERR => :CI])
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "I","VirusOccupancy.csv"), select(CasOcc, Not([:low,:up])))
 @df CasOcc plot(:BinnedLogOut,:Median, ribbon = (:low, :up), group = :Virus,
     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "I","VirusOccupancy.pdf"))
+sort!(CasOcc,:Virus)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "I","VirusOccupancy.csv"), select(CasOcc, Not([:low,:up])))
 ########################### J ###########################
 ## Port occupancy model
 occupancy_df = Cas_p
@@ -329,6 +331,7 @@ MixedModels.likelihoodratiotest(Occupancy_m1,Occupancy_m2)
 # CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig7","1000CasOccupancyBootstrap.csv"),OccupancyCas_BootDf)
 OccupancyCas_BootDf = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig7","1000CasOccupancyBootstrap.csv"),DataFrame)
 OccupancyCas_BootDf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in OccupancyCas_BootDf.err]
+OccupancyCas_BootDf[!, :variable] = ["Intercept","Poke-time","Virus: Caspase","Poke-time & Virus: Caspase"]
 yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(OccupancyCas_BootDf)),
     [L"Intercept",L"PokeTime",L"Group:Caspase",L"PokeTime\&Group:Caspase"]))
     xprop = ("Coefficient estimate", font(10, "Bookman Light"), (-1.1,0.2))
@@ -337,7 +340,9 @@ yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(OccupancyCas_BootDf)),
     vline!([0], linecolor = :red, legend = false, linestyle = :dash)
     annotate!([(-1,1,"n.s", 10), (-1,2,"*", 10), (-1,3,"n.s.", 10), (-1,4,"*", 10)])
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "J","VirusOccupancyBootstrap.pdf"))
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "J","VirusOccupancyBootstrap.csv"), select(OccupancyCas_BootDf, Not([:type,:group,:Y])))
+rename!(OccupancyCas_BootDf, :err => :CI)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig3", "J","VirusOccupancyBootstrap.csv"),
+    select(OccupancyCas_BootDf, Not([:type,:group,:Y, :interval,:names])))
 ########################### SFig 3 ###########################
 ########################### A ###########################
 ## Scatter Poke & Trial
@@ -345,7 +350,7 @@ CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submi
     ylabel = "Trial", legend = false)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "A","ScatterPoke&Trial.pdf"))
 prov = select(Age_p,[:Day,:MouseID,:Age, :Poke, :Streak, :LogOut])
-rename(prov, :Streak => :Trial)
+rename!(prov, [:Streak => :Trial, :LogOut => :LogPokeTime])
 CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "A","ScatterPoke&Trial.csv"), prov)
 ########################### B ###########################
 ## Median Leaving Time
@@ -355,11 +360,12 @@ dd2 = combine(groupby(dd1,:Age)) do dd
     group_summary(dd,:LongBinnedStreak,:LogDuration; normality = false)
 end
 filter!(r-> r.LongBinnedStreak <= 90, dd2)
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "B","MedianRatePerTrial.csv"), dd2)
 xprop = ("Trial", (10,90), xyfont)
 yprop = ("Median laeving time(seconds)", xyfont,(log(1),log10(30)),(log10.([1,5,10,15,20, 30]),string.([1,5,10,15,20,30])))
 @df dd2 scatter(:LongBinnedStreak, :Central, yerror = :ERR, group = :Age, xaxis = xprop, yaxis = yprop, grid = true,size = (600,600), legend = true)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "B","MedianRatePerTrial.pdf"))
+rename!(dd2,[:Central => :Median, :ERR => :CI, :LongBinnedStreak => :TrialBin])
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "B","MedianRatePerTrial.csv"), dd2)
 ########################### C ###########################
 ##  Leving rate ######################################
 Sex_LevingAn, Sex_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative_algorythm;
@@ -368,7 +374,9 @@ Sex_LevingAn, Sex_LevingAn_df = function_analysis(Age_s,:LogDuration, cumulative
     yprop = ("Probablity of leaving", xyfont)
     plot!(Sex_LevingAn, xaxis = xprop, yaxis = yprop, legend = (0.8, 0.25))
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "C","SexLevingRate.pdf"))
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "C","SexLevingRate.csv"), Sex_LevingAn_df)
+rename!(Sex_LevingAn_df, [:Central => :Median, :ERR => :CI, :LogDuration => :PokeTime])
+sort!(Sex_LevingAn_df,:Sex)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "C","SexLevingRate.csv"), select(Sex_LevingAn_df, Not([:up,:low])))
 ########################### D ###########################
 ########################### Age Sex Model bootstrap #####################################
 Age_Sex_verb1 = @formula(Leave ~ 1 + Streak_zscore + LogOut_zscore + Age +  (1+Streak_zscore+LogOut_zscore|MouseID));
@@ -381,6 +389,7 @@ MixedModels.likelihoodratiotest(Age_Sex1,Age_Sex2)
 Sex_BootDf2 = CSV.read(joinpath(replace(path,basename(path)=>""),"Development_Figures","SFig1","1000SexBootstrap.csv"),DataFrame)
 Sex_btdf = Sex_BootDf2[[1,3,2,4,5,6],:]
 Sex_btdf.err = [tuple(parse.(Float64,split(err[2:end-1],", "))...) for err in Sex_btdf.err]
+Sex_btdf[!, :variable] = ["Intercept","Poke-time","Trial","Age: Juveniles", "Sex: Males","Age: Juveniles & Sex: Males"]
 yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Sex_btdf)),
     [L"Intercept",L"PokeTime",L"Trial",L"Juveniles",
     L"Male",
@@ -390,4 +399,6 @@ yprop = ("",font(10, "Bookman Light"),(collect(1:nrow(Sex_btdf)),
     xaxis = xprop, yaxis = yprop, markercolor = :gray75)
     vline!([0], linecolor = :red, legend = false, linestyle = :dash)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "D","SexLevingRateBootstrap.pdf"))
-CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "D","SexLevingRateBootstrap.csv"), Sex_btdf)
+rename!(Sex_btdf, :err => :CI)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "D","SexLevingRateBootstrap.csv"),
+    select(Sex_btdf, Not([:type,:group, :interval,:names])))
