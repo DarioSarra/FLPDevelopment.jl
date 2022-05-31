@@ -11,24 +11,24 @@ ps_y = pixel_factor * 1
 fig_size = (ps_x, ps_y)
 
 theme(:default)
-# gr(size = fig_size,
-#     titlefont = font(14, "Bookman Light"),
-#     guidefont = font(14, "Bookman Light"),
-#     tick_orientation = :out,
-#     grid = false,
-#     markerstrokecolor = :black,
-#     markersize = 8,
-#     thickness_scaling = 1.5,
-#     legendfont = font(10, "Bookman Light"))
-pgfplotsx(size = fig_size,
+gr(size = fig_size,
+    titlefont = font(14, "Bookman Light"),
+    guidefont = font(14, "Bookman Light"),
     tick_orientation = :out,
     grid = false,
     markerstrokecolor = :black,
     markersize = 8,
     thickness_scaling = 1.5,
-    titlefont = xyfont,
-    guidefont = xyfont,
-    legendfont = legfont)
+    legendfont = font(10, "Bookman Light"))
+# pgfplotsx(size = fig_size,
+#     tick_orientation = :out,
+#     grid = false,
+#     markerstrokecolor = :black,
+#     markersize = 8,
+#     thickness_scaling = 1.5,
+#     titlefont = xyfont,
+#     guidefont = xyfont,
+#     legendfont = legfont)
 ## Load and adjust data
 include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
@@ -402,3 +402,16 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submiss
 rename!(Sex_btdf, :err => :CI)
 CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","SFig3", "D","SexLevingRateBootstrap.csv"),
     select(Sex_btdf, Not([:type,:group, :interval,:names])))
+##### After review #####
+## poke number over time
+@df Age_p scatter(:LogOut, :PokeInStreak, markersize = 2, xlabel = "Poke Time(Log10 seconds)",
+    ylabel = "Poke Number", legend = false, markerstrokewidth = 0)
+## Leaving over poke Number
+Age_PokeToLeaveAn, Age_PokeToLeaveAn_df = function_analysis(Age_s,:Num_pokes, cumulative_algorythm; grouping = :Age, calc = :bootstrapping)
+xprop = ("Poke number")
+yprop = ("Probablity of leaving")
+plot!(Age_PokeToLeaveAn, xaxis = xprop, yaxis = yprop, legend = false)
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2","D","LevingRate.pdf"))
+rename!(Age_PokeToLeaveAn_df, :LogDuration => :PokeTime)
+
+Age_s.Num_pokes
