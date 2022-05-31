@@ -3,7 +3,7 @@
 # Directory = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/run_task_2/Test"
 # Directory = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/run_task_2/Dev_raw_data"
 pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/DarioDevelopment"
-pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/DarioDevelopment"
+pathLin = "/home/beatriz/dario.sarra@neuro.fchampalimaud.org/Flipping/Datasets/Pharmacology/DarioDevelopment"
 if ispath(pathMac)
     path = pathMac
 elseif ispath(pathLin)

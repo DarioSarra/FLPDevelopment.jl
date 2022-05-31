@@ -1,7 +1,7 @@
 # using Revise, FLPDevelopment, BrowseTables
 
 pathMac = "/Volumes/GoogleDrive/My Drive/Flipping/Datasets/Pharmacology/CaspaseDevelopment"
-pathLin = "/home/beatriz/mainen.flipping.5ht@gmail.com/Flipping/Datasets/Pharmacology/CaspaseDevelopment"
+pathLin = "/home/beatriz/dario.sarra@neuro.fchampalimaud.org/Flipping/Datasets/Pharmacology/CaspaseDevelopment"
 if ispath(pathMac)
     path = pathMac
 elseif ispath(pathLin)
