@@ -112,6 +112,10 @@ function check_group(df)
         error("Can't identify 2 groups for subtraction")
     end
 end
+
+function AIC_test(m1,m2)
+    exp((aic(m1) - aic(m2))/2)
+end
 """
     process_filtered_streak(df::AbstractDataFrame, var::Symbol, val <:Number)
 

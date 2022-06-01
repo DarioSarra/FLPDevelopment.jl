@@ -71,3 +71,15 @@ end
 open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
 open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
 ###
+
+NumPokes_f = @formula(Leave ~ 1 + PokeInStreak +  (1+PokeInStreak|MouseID));
+NumPokes_m = fit(MixedModel,NumPokes_f, Age_p, Bernoulli())
+PokeTime_f = @formula(Leave ~ 1 + LogOut_zscore +  (1+LogOut_zscore|MouseID));
+PokeTime_m = fit(MixedModel,PokeTime_f, Age_p, Bernoulli())
+both_f = @formula(Leave ~ 1 + LogOut_zscore +  PokeInStreak +(1+LogOut_zscore+PokeInStreak|MouseID))
+both_m = fit(MixedModel,both_f, Age_p, Bernoulli())
+AIC_test(PokeTime_m, NumPokes_m)
+aic(PokeTime_m)
+aic(NumPokes_m)
+MixedModels.likelihoodratiotest(PokeTime_m, both_m)
+MixedModels.likelihoodratiotest(NumPokes_m, both_m)
