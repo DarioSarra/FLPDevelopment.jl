@@ -5,6 +5,7 @@ using Reexport
 @reexport using StatsBase, HypothesisTests, Bootstrap, MixedModels, Random, Survival
 @reexport using StatsPlots, StatsPlots.PlotMeasures, LaTeXStrings, KernelDensity
 import Statistics: median, std
+# import GLM: lm
 
 include("groups.jl")
 include("utilities.jl")
@@ -20,7 +21,7 @@ export frequency, fraction_true, bin_axis, AIC_test
 export session_plot, maintitle!
 export individual_summary, group_summary, bootstrapdf
 export function_analysis, survivalrate_algorythm, cumulative_algorythm, hazardrate_algorythm, mediansurvival_analysis
-export incorrect_fraction, median_ci_scatter
+export incorrect_fraction, median_ci_scatter, plot_xy
 export add_bar!, add_info!, Difference
 
 end # module
