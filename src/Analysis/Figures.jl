@@ -372,7 +372,7 @@ savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","ZMfeedb
 
 # @df occupancy_df density(:Occupancy, group = :Age, ylabel = "Kernel density", xlabel = "Fraction of time poking")
 #time spent poking as a function of time elapsed
-df = FLPDevelopment.summarizexy(occupancy_df,:LogOut,:Occupancy, group = :Age, bin = true, digits = 1)
+df = FLPDevelopment.summarize_xy(occupancy_df,:LogOut,:Occupancy, group = :Age, bin = true, digits = 1)
 @df filter(r -> !isnan(r.Occupancy_sem), df) plot(:BinnedLogOut,:Occupancy_mean, ribbon = :Occupancy_sem, group = :Age,
     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
 # @df df plot(:BinnedLogOut,:Central, ribbon = :ERR, group = :Age,
@@ -406,7 +406,7 @@ occupancy_df = filter(r -> r.PokeInStreak > 0, Cas_p)
 
 # @df occupancy_df density(:Occupancy, group = :Virus, ylabel = "Kernel density", xlabel = "Fraction of time poking")
 #time spent poking as a function of time elapsed
-df = FLPDevelopment.summarizexy(occupancy_df,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1)
+df = FLPDevelopment.summarize_xy(occupancy_df,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1)
 @df filter(r -> !isnan(r.Occupancy_sem), df) plot(:BinnedLogOut,:Occupancy_mean, ribbon = :Occupancy_sem, group = :Virus,
     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
 # @df df plot(:BinnedLogOut,:Central, ribbon = :ERR, group = :Virus,
@@ -478,7 +478,7 @@ Age_RewTime.groupdf
 Age_RewTime.test
 Age_p.BinnedTime = Int64.(round.(Age_p.PokeOut./60))
 
-RewRate_df = FLPDevelopment.summarizexy(Age_p,:BinnedTime,:CumReward, group = :Age, bin = false)
+RewRate_df = FLPDevelopment.summarize_xy(Age_p,:BinnedTime,:CumReward, group = :Age, bin = false)
 filter!(r -> !isnan(r.CumReward_sem),RewRate_df)
 @df RewRate_df plot(:BinnedTime,:CumReward_mean, ribbon = :CumReward_sem, group = :Age,
     xlims = (0,60), xlabel = "Elapsed time (minutes)", ylabel = "Cumulative Rewards", legend = :topleft)

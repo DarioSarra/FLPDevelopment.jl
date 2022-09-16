@@ -20,14 +20,14 @@
 
 """
     `Difference(df, group, var; ind_summary = mean, ylabel = "Median ...", xyfont = font(18, "Bookman Light"), ylims = nothing)`
+
     A - plot a scatter with median ± CI of the variable var per each value of group
     B - perform MannWhitneyUTest and annotate the results
     C - Calculate the effect size if p < 0.05
-    C - return a named tuple with the plot, MannWhitneyUTest, effect size
+    D - return a named tuple with the plot, MannWhitneyUTest, effect size
         a Dataframe with the group median and CI of var,
         and a Dataframe with the individual mouse mean value of var
 """
-
 function Difference(df, group, var; ind_summary = mean, ylabel = "Median ...", xyfont = font(18, "Bookman Light"), ylims = nothing)
     res_plt, res_group, res_individual = median_ci_scatter(df, group, var; ind_summary = ind_summary)
     res_test = MWU_test(res_individual, group, var)
@@ -130,8 +130,9 @@ end
 """
     `function_analysis(df,variable, f; grouping = nothing, step =0.05, calc = :basic,
             color = [:auto], linestyle = [:auto])`
-    Apply the function f over the vaariable var per each value of grouping and
-    plots the result over the variable var
+
+    Apply the function f over the variable var per each value of grouping and
+    plots the result over the variable var. functions algorythms are defined in Analysis_fun.jl
 """
 
 function function_analysis(df,var, f; grouping = nothing, step =0.05, calc = :basic,
@@ -176,7 +177,20 @@ function mediansurvival_analysis(streakdf,variable, grouping; plt = plot())
     return plt
 end
 ##
-function summarizexy(df,x,y; group = "none", bin = true, digits = 1, calc = :mean)
+function plot_xy(df,x,y; group = "none", bin = true, digits = 1, calc = :mean, filtNaN = true, kwargs...)
+    res = summarize_xy(df,x,y; group = group, bin = bin, digits = digits, calc = calc)
+    bin ? (res_x = Symbol("Binned"*string(x))) : (res_x = x)
+    y_m = Symbol(string(y) * "_mean")
+    y_s = Symbol(string(y) * "_sem")
+    filtNaN && filter!(y_s => v -> !isnan(v),res)
+    if group == "none"
+        return @df res plot(cols(res_x),cols(y_m), ribbon = cols(y_s); kwargs...)
+    else
+        return @df res plot(cols(res_x),cols(y_m), ribbon = cols(y_s), group = cols(group); kwargs...)
+    end
+end
+
+function summarize_xy(df,x,y; group = "none", bin = true, digits = 1, calc = :mean)
     if bin
         xcol = Symbol("Binned"*string(x))
         df[:,xcol] = round.(df[:,x],digits = digits)

@@ -208,10 +208,10 @@ select!(prov, Not(:color))
 CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "F","Tests.csv"), prov)
 ########################### G ###########################
 ##Port occupancy by pokes
-# df0 = FLPDevelopment.summarizexy(Age_p,:LogOut,:Occupancy, group = :Age, bin = true, digits = 1)
+# df0 = FLPDevelopment.summarize_xy(Age_p,:LogOut,:Occupancy, group = :Age, bin = true, digits = 1)
 # @df filter(r -> !isnan(r.Occupancy_sem), df0) plot(:BinnedLogOut,:Occupancy_mean, ribbon = :Occupancy_sem, group = :Age,
 #     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)
-AgeOcc = FLPDevelopment.summarizexy(Age_p,:LogOut,:Occupancy, group = :Age, bin = true, digits = 1, calc = :bootstrapping)
+AgeOcc = FLPDevelopment.summarize_xy(Age_p,:LogOut,:Occupancy, group = :Age, bin = true, digits = 1, calc = :bootstrapping)
 rename!(AgeOcc,[:Central => :Median, :ERR => :CI])
 CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission","Fig2", "G","AgeOccupancy.csv"), select(AgeOcc, Not([:low,:up])))
 @df AgeOcc plot(:BinnedLogOut,:Median, ribbon = (:low, :up), group = :Age,
@@ -310,7 +310,7 @@ CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submi
     select(Cas_BootDf, Not([:type,:group, :interval, :names])))
 ########################### I ###########################
 ##Port occupancy by pokes
-CasOcc = FLPDevelopment.summarizexy(Cas_p,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1, calc = :bootstrapping)
+CasOcc = FLPDevelopment.summarize_xy(Cas_p,:LogOut,:Occupancy, group = :Virus, bin = true, digits = 1, calc = :bootstrapping)
 rename!(CasOcc,[:Central => :Median, :ERR => :CI])
 @df CasOcc plot(:BinnedLogOut,:Median, ribbon = (:low, :up), group = :Virus,
     xlabel = "Elapsed time (Log10 seconds)", xticks = -1:3, ylabel = "Fraction of time poking", legend = :topright)

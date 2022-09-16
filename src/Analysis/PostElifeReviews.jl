@@ -70,8 +70,15 @@ for streakdf in [Age_s, Cas_s]
 end
 open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
 open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
-###
-
+##
+Age_Rewards = Difference(Age_s, :Age, :Num_Rewards, ylabel = "number of rewards per trial", ylims = (0,1.3))
+Age_Rewards.plt
+Age_Rewards.test
+Age_Rewards.groupdf
+Age_Rewards.groupdf[!,:Measure] .= "Number of rewards"
+rename!(Age_Rewards.groupdf,[:Central => :Median, :ERR => :CI])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Post-Rewievs", "Rewards.pdf"
+##
 NumPokes_f = @formula(Leave ~ 1 + PokeInStreak +  (1+PokeInStreak|MouseID));
 NumPokes_m = fit(MixedModel,NumPokes_f, Age_p, Bernoulli())
 PokeTime_f = @formula(Leave ~ 1 + LogOut_zscore +  (1+LogOut_zscore|MouseID));
@@ -83,3 +90,30 @@ aic(PokeTime_m)
 aic(NumPokes_m)
 MixedModels.likelihoodratiotest(PokeTime_m, both_m)
 MixedModels.likelihoodratiotest(NumPokes_m, both_m)
+))
+##
+Age_AfterLast = Difference(Age_s, :Age, :AfterLast,
+    ylabel = "Consecutive failures before leaving", ylims = (0,5))
+Age_AfterLast.plt
+Age_AfterLast.test
+Age_AfterLast.groupdf
+Age_AfterLast.groupdf[!,:Measure] .= "ConsecutiveFailures"
+rename!(Age_AfterLast.groupdf,[:Central => :Median, :ERR => :CI])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Post-Rewievs", "ConsecutiveFailures.pdf"))
+##
+Cas_Rewards = Difference(Cas_s, :Virus, :Num_Rewards, ylabel = "number of rewards per trial", ylims = (0,1.3))
+Cas_Rewards.plt
+Cas_Rewards.test
+Cas_Rewards.groupdf
+Cas_Rewards.groupdf[!,:Measure] .= "Number of rewards"
+rename!(Cas_Rewards.groupdf,[:Central => :Median, :ERR => :CI])
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Post-Rewievs", "Cas_Rewards.pdf"))
+##
+Cas_AfterLast = Difference(Cas_s, :Virus, :AfterLast,
+    ylabel = "Consecutive failures before leaving", ylims = (0,5))
+Cas_AfterLast.plt
+Cas_AfterLast.test
+Cas_AfterLast.groupdf
+Cas_AfterLast.groupdf[!,:Measure] .= "ConsecutiveFailures"
+rename!(Cas_AfterLast.groupdf,[:Central => :Median, :ERR => :CI])
+HypothesisTests.OneSampleTTest(mousecoeff.Num_Rewards .+ stimbound_m.β[2])
