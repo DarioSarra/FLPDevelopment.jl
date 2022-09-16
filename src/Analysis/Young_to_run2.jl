@@ -36,7 +36,7 @@ for (a,f) in Afreq
     Aprob[a] = round(f/nrow(Age_s),digits = 5)
 end
 Age_s[!,:IncorrectStart] = [!x for x in Age_s.CorrectStart]
-Age_s[!,:IncorrectLeave] = [!x for x in Age_s.CorrectLeave]
+Age_s[!,:IncorrectLeave] = vcat(Age_s[2:end,:IncorrectStart],[false])
 Age_s[!,:P_AfterLast] = [Aprob[a] for a in Age_s.AfterLast]
 gd = groupby(Age_s,:Session)
 transform!(gd, :AfterLast => frequency)
