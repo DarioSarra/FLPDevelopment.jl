@@ -71,8 +71,12 @@ end
 open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
 open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
 ##
-stimbound_f = @formula(AfterLast ~ 1 + Num_Rewards  + Age + (1+Num_Rewards|MouseID));
-stimbound_m = fit(MixedModel,stimbound_f, Age_s)
+contrasts = Dict(
+    :Age => DummyCoding(; base="Adults"),
+    :Virus => DummyCoding(; base = "tdTomato"),
+    :MouseID => Grouping())
+stimbound_f = @formula(AfterLast ~ 1 + Num_Rewards  + Age + (1|MouseID)+ (Num_Rewards|MouseID));
+stimbound_m = fit(MixedModel,stimbound_f, Age_s; contrasts)
 simple_age_coeff = DataFrame(only(raneftables(stimbound_m)))
 rename!(simple_age_coeff, Symbol("(Intercept)") => :Intercept, :Num_Rewards => :Res_NumRewards)
 simple_age_coeff[!,:Coef_NumRewards] = simple_age_coeff.Res_NumRewards .+ stimbound_m.β[2]
@@ -91,8 +95,9 @@ extrema(simple_age_coeff.Pos)
     subplot =2)
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Post-Rewievs", "StimulusBound.png"))
 ##
-cas_stimbound_f = @formula(AfterLast ~ 1 + Num_Rewards  + Virus + (1+Num_Rewards|MouseID));
-cas_stimbound_m = fit(MixedModel,cas_stimbound_f, Cas_s)
+cas_stimbound_f = @formula(AfterLast ~ 1 + Num_Rewards  + Virus + (1|MouseID)+ (Num_Rewards|MouseID));
+cas_stimbound_m = fit(MixedModel,cas_stimbound_f, Cas_s; contrasts)
+
 simple_cas_coeff = DataFrame(only(raneftables(cas_stimbound_m)))
 rename!(simple_cas_coeff, Symbol("(Intercept)") => :Intercept, :Num_Rewards => :Res_NumRewards)
 simple_cas_coeff[!,:Coef_NumRewards] = simple_cas_coeff.Res_NumRewards .+ cas_stimbound_m.β[2]
@@ -130,7 +135,7 @@ Td_SB = fit(MixedModel,f_SB, filter(r-> r.Virus == "tdTomato", Cas_s))
 Cas_SB = fit(MixedModel,f_SB, filter(r-> r.Virus == "Caspase", Cas_s))
 ##
 f_Age_SB = @formula(AfterLast ~ 1 + Num_Rewards*Age + (1+Num_Rewards|MouseID));
-Age_SB = fit(MixedModel,f_Age_SB,  Age_s)
+Age_SB = fit(MixedModel,f_Age_SB,  Age_s; contrasts)
 age_coeff = DataFrame(only(raneftables(Age_SB)))
 rename!(age_coeff, Symbol("(Intercept)") => :Intercept, :Num_Rewards => :mouse_dev_NRew)
 age_coeff[!,:Age] = [x in dario_youngs ? "Juveniles" : "Adults" for x in age_coeff.MouseID]
@@ -146,7 +151,7 @@ transform!(age_coeff, [:Shift,:Age] =>
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Post-Rewievs", "Age_coeff.png"))
 ##
 f_Cas_SB = @formula(AfterLast ~ 1 + Num_Rewards*Virus + (1+Num_Rewards|MouseID));
-Cas_SB = fit(MixedModel,f_Cas_SB,  Cas_s)
+Cas_SB = fit(MixedModel,f_Cas_SB,  Cas_s; contrasts)
 cas_coeff = DataFrame(only(raneftables(Cas_SB)))
 rename!(cas_coeff, Symbol("(Intercept)") => :Intercept, :Num_Rewards => :mouse_dev_NRew)
 cas_coeff[!,:Virus] = [get(VirusDict,x,"Missing") for x in cas_coeff.MouseID]
