@@ -11,70 +11,65 @@ ps_y = pixel_factor * 1
 fig_size = (ps_x, ps_y)
 
 theme(:default)
-# gr(size = fig_size,
-#     titlefont = font(14, "Bookman Light"),
-#     guidefont = font(14, "Bookman Light"),
-#     tick_orientation = :out,
-#     grid = false,
-#     markerstrokecolor = :black,
-#     markersize = 8,
-#     thickness_scaling = 1.5,
-#     legendfont = font(10, "Bookman Light"))
-pgfplotsx(size = fig_size,
+gr(size = fig_size,
+    titlefont = font(14, "Bookman Light"),
+    guidefont = font(14, "Bookman Light"),
     tick_orientation = :out,
     grid = false,
     markerstrokecolor = :black,
     markersize = 8,
     thickness_scaling = 1.5,
-    titlefont = xyfont,
-    guidefont = xyfont,
-    legendfont = legfont)
+    legendfont = font(10, "Bookman Light"))
+# pgfplotsx(size = fig_size,
+#     tick_orientation = :out,
+#     grid = false,
+#     markerstrokecolor = :black,
+#     markersize = 8,
+#     thickness_scaling = 1.5,
+#     titlefont = xyfont,
+#     guidefont = xyfont,
+#     legendfont = legfont)
 ## Load and adjust data
-include("Young_to_run2.jl")
-include("Caspase_to_run.jl")
-for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
-    filter!(r -> r.Protocol == "90/90" &&
-    r.MouseID != "CD09" && # biting, see B1_CD09_2020-07-13 minute30
-    r.MouseID != "RJ58" && # blind
-    r.MouseID != "RJ67" && # biting, see B3_RJ67_2020-09-28 minute 7:33
-    !(r.MouseID in first_females_group) &&
-    r.ProtocolSession == 1
-    ,df)
-end
-for df in (Cas_p, Cas_b, Cas_s)
-    filter!(r -> r.Gen == "Rbp4-cre", df) # exclude wild type animals
-end
-#adjustments for pokes DataFrames
-for pokedf in [Age_p, Cas_p]
-    # transform time in log 10 scale
-    pokedf.LogOut = log10.(pokedf.Out)
-    pokedf.LogInterpoke = log10.(pokedf.PostInterpoke)
-    pokedf.LogDuration = log10.(pokedf.PokeDur)
-    # zscore values for logistic regression
-    transform!(pokedf, [:Streak, :Out, :LogOut] .=> zscore)
-    transform!(groupby(pokedf,[:MouseID, :Streak]), :PokeDur => cumsum => :CumDuration)
-    pokedf.Occupancy = pokedf.CumDuration ./ pokedf.Out
-    pokedf.Occupancy_zscore = zscore(pokedf.Occupancy)
-end
-#adjustments for trials DataFrames
-for streakdf in [Age_s, Cas_s]
-    # transform time in log 10 scale
-    streakdf.LogDuration = log10.(streakdf.Trial_Duration)
-    # streakdf.ElapsedTime = log10.(streakdf.AfterLast_Duration .+ 0.1)
-    streakdf.LogTravel = log10.(streakdf.Travel_to)
-    # bin trials
-    # streakdf.BinnedStreak = bin_axis(streakdf.Streak; unit_step = 4)
-    # streakdf.BlockBinnedStreak = bin_axis(streakdf.Streak; unit_step = 15)
-    streakdf.LongBinnedStreak = bin_axis(streakdf.Streak; unit_step = 20)
-    transform!(streakdf, :Streak .=> zscore)
-end
-open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
-open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))
+include("Filters.jl")
 ##
 contrasts = Dict(
+    :Num_Rewards => StandardizedPredictors.Center(0),
     :Age => DummyCoding(; base="Adults"),
     :Virus => DummyCoding(; base = "tdTomato"),
     :MouseID => Grouping())
+## Test if interaction has more explanatory power
+f_add_SB_Age = @formula(AfterLast ~ 1 + Num_Rewards+Age +
+    (1|MouseID) + (Num_Rewards|MouseID));
+f_mult_SB_Age = @formula(AfterLast ~ 1 + Num_Rewards*Age +
+    (1|MouseID) + (Num_Rewards|MouseID));
+add_SB_Age = fit(MixedModel,f_add_SB_Age,  Age_s; contrasts)
+mult_SB_Age = fit(MixedModel,f_mult_SB_Age,  Age_s; contrasts)
+MixedModels.likelihoodratiotest(add_SB_Age,mult_SB_Age)
+
+
+f_add_SB_Cas = @formula(AfterLast ~ 1 + Num_Rewards+Virus +
+    (1|MouseID) + (Num_Rewards|MouseID));
+f_mult_SB_Cas = @formula(AfterLast ~ 1 + Num_Rewards*Virus +
+    (1|MouseID) + (Num_Rewards|MouseID));
+add_SB_Cas = fit(MixedModel,f_add_SB_Cas,  Cas_s; contrasts)
+mult_SB_Cas = fit(MixedModel,f_mult_SB_Cas,  Cas_s; contrasts)
+MixedModels.likelihoodratiotest(add_SB_Cas,mult_SB_Cas)
+## plot gentle slope
+plot_xy(Age_s,:Num_Rewards,:AfterLast; group = :Age, bin = false, legend = :top,
+    ylims = (0,15), ylabel = "Consecutive failures", xlabel = "Rewards obtained")
+
+plot_xy(Cas_s,:Num_Rewards,:AfterLast; group = :Virus, bin = false, legend = :top,
+    ylims = (0,15), ylabel = "Consecutive failures", xlabel = "Rewards obtained")
+## plot individual coefficients
+m = mult_SB_Cas
+main_ef = table_coef(m)
+ran_ef = table_ranef(m)
+ran_ef[!,:Virus] = [get(VirusDict, m,"NA") for m in ran_ef.MouseID]
+ineraction_eff = main_ef[4,2]
+ran_ef[:, Symbol("Net_Num_Rewards(centered: 0)")] = [v == "tdTomato" ? c : c + ineraction_eff
+    for (v,c) in zip(ran_ef.Virus, ran_ef[:,Symbol("Net_Num_Rewards(centered: 0)")])]
+@df ran_ef scatter(:Virus, cols(Symbol("Net_Num_Rewards(centered: 0)")))
+##
 stimbound_f = @formula(AfterLast ~ 1 + Num_Rewards  + Age + (1|MouseID)+ (Num_Rewards|MouseID));
 stimbound_m = fit(MixedModel,stimbound_f, Age_s; contrasts)
 simple_age_coeff = DataFrame(only(raneftables(stimbound_m)))
