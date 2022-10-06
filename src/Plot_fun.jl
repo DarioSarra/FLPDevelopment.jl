@@ -28,18 +28,18 @@
         a Dataframe with the group median and CI of var,
         and a Dataframe with the individual mouse mean value of var
 """
-function Difference(df, group, var; ind_summary = mean, ylabel = "Median ...", xyfont = font(18, "Bookman Light"), ylims = nothing)
-    res_plt, res_group, res_individual = median_ci_scatter(df, group, var; ind_summary = ind_summary)
+function Difference(df, group, var; ind_summary = mean, kwargs...)
+    res_plt, res_group, res_individual = median_ci_scatter(df, group, var; ind_summary = ind_summary, kwargs...)
     res_test = MWU_test(res_individual, group, var)
     res_effect = res_test.U/(res_test.nx * res_test.ny)
     if res_effect < 0.5
         res_effect = ((res_test.nx * res_test.ny) - res_test.U) / (res_test.nx * res_test.ny)
     end
     e = round(res_effect; digits =2)
-    add_info!(res_plt, res_group, pvalue(res_test), e; ylims = ylims)
-    xprop = ("Group", xyfont)
-    yprop = (ylabel, xyfont)
-    plot!(xaxis = xprop, yaxis = yprop)
+    add_info!(res_plt, res_group, pvalue(res_test), e)
+    # xprop = ("Group", xyfont)
+    # yprop = (ylabel, xyfont)
+    # plot!(xaxis = xprop, yaxis = yprop)
     return (plt = res_plt,
         test = res_test,
         effect = res_effect,
@@ -54,7 +54,7 @@ end
     C - Plots the value as a scatter plot ± CI
 """
 
-function median_ci_scatter(df, grouping, var; ind_summary = mean)
+function median_ci_scatter(df, grouping, var; ind_summary = mean, kwargs...)
     df1 = individual_summary(df, grouping, var; summary = ind_summary)
     df2 = group_summary(df1, grouping, var; normality = false)
     if typeof(grouping) <: AbstractVector && sizeof(grouping) > 1
@@ -74,11 +74,12 @@ function median_ci_scatter(df, grouping, var; ind_summary = mean)
         xlims = (0.5, nrow(df2) + 0.5),
         xticks = (1:nrow(df2),string.(cols(xaxis))),
         color = :color,
-        legend = false)
+        legend = false; kwargs...)
     return plt, df2, df1
 end
 
-function add_info!(plt, df, p, e; normality = false, ylims = nothing)
+function add_info!(plt, df, p, e; normality = false)
+    ylims = Plots.ylims(plt)
     plt_lim = isnothing(ylims) ? maximum(df.Central .+ last.(df.ERR)) : last(ylims) - (last(ylims) - first(ylims))/5
     plt_bot = isnothing(ylims) ? minimum(df.Central .+ first.(df.ERR)) : first(ylims)
     plt_span = (plt_lim-plt_bot)/10
@@ -95,7 +96,7 @@ function add_info!(plt, df, p, e; normality = false, ylims = nothing)
     else
         pmessage = "Mann-Whitney U test, p = $(pval)"
     end
-    add_pvalue!(plt, ref+span/2, span/2, pmessage)
+    add_pvalue!(plt, ref+span/2, span, pmessage)
     isnothing(ylims) && (ylims = (0,plt_lim + 2plt_span))
     yaxis!(ylims = ylims)
     return plt

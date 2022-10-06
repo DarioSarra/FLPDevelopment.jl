@@ -113,8 +113,14 @@ function check_group(df)
     end
 end
 
-function AIC_test(m1,m2)
-    exp((aic(m1) - aic(m2))/2)
+"""
+    'AIC_test(candidate_m, reference_m)'
+    Compares to models m1 and m2 using the information criterion aic.
+    m1 is the candidate model, the one you want to know if it is better than m2.
+    Also the smaller the AIC value, the better the model fit.
+"""
+function AIC_test(candidate_m,reference_m)
+    exp((aic(candidate_m) - aic(reference_m))/2)
 end
 """
     process_filtered_streak(df::AbstractDataFrame, var::Symbol, val <:Number)

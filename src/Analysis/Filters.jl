@@ -1,3 +1,35 @@
+using Revise, FLPDevelopment, BrowseTables
+# Plot settings
+# Font size and type
+xyfont = font(18, "Bookman Light")
+legfont = font(14, "Bookman Light")
+
+# Figure/Plot image size
+pixel_factor = 600
+ps_x = pixel_factor * 1
+ps_y = pixel_factor * 1
+fig_size = (ps_x, ps_y)
+
+theme(:default)
+gr(size = fig_size,
+    titlefont = font(14, "Bookman Light"),
+    guidefont = font(8, "Bookman Light"),
+    tick_orientation = :out,
+    grid = false,
+    markerstrokecolor = :black,
+    markersize = 8,
+    thickness_scaling = 1.5,
+    legendfont = font(10, "Bookman Light"))
+# pgfplotsx(size = fig_size,
+#     tick_orientation = :out,
+#     grid = false,
+#     markerstrokecolor = :black,
+#     markersize = 8,
+#     thickness_scaling = 1.5,
+#     titlefont = xyfont,
+#     guidefont = xyfont,
+#     legendfont = legfont)
+## Load and adjust data
 include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
 for df in (Age_p, Age_b, Age_s, Cas_p, Cas_b, Cas_s)
@@ -20,7 +52,7 @@ for pokedf in [Age_p, Cas_p]
     pokedf.LogDuration = log10.(pokedf.PokeDur)
     # zscore values for logistic regression
     transform!(pokedf, [:Streak, :Out, :LogOut] .=> zscore)
-    transform!(groupby(pokedf,[:MouseID, :Streak]), :PokeDur => cumsum => :CumDuration)
+    transform!(groupby(pokedf,[:MouseID, :Streak]), :PokeDur => cumsum => :CumDuration, :Reward => cumsum => :CumReward)
     pokedf.Occupancy = pokedf.CumDuration ./ pokedf.Out
     pokedf.Occupancy_zscore = zscore(pokedf.Occupancy)
 end

@@ -99,7 +99,7 @@ function bootstrapdf(df, mdl; grouping = nothing, n = 100)
         "Trial & $grouping: $(cases[2])",
         "Poke-time & $grouping: $(cases[2])"])
     catch
-        println("didn't work ")
+        println("grouping renaming didn't work")
     end
     transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
     return bootdf
