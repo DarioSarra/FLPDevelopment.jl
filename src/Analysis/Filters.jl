@@ -1,8 +1,7 @@
 using Revise, FLPDevelopment, BrowseTables
 # Plot settings
 # Font size and type
-xyfont = font(18, "Bookman Light")
-legfont = font(14, "Bookman Light")
+
 
 # Figure/Plot image size
 pixel_factor = 600
@@ -20,6 +19,8 @@ gr(size = fig_size,
     markersize = 8,
     thickness_scaling = 1.5,
     legendfont = font(10, "Bookman Light"))
+    xyfont = font(10, "Bookman Light")
+    legfont = font(10, "Bookman Light")
 # pgfplotsx(size = fig_size,
 #     tick_orientation = :out,
 #     grid = false,
@@ -29,6 +30,8 @@ gr(size = fig_size,
 #     titlefont = xyfont,
 #     guidefont = xyfont,
 #     legendfont = legfont)
+#     xyfont = font(18, "Bookman Light")
+#     legfont = font(14, "Bookman Light")
 ## Load and adjust data
 include("Young_to_run2.jl")
 include("Caspase_to_run.jl")
@@ -68,5 +71,17 @@ for streakdf in [Age_s, Cas_s]
     streakdf.LongBinnedStreak = bin_axis(streakdf.Streak; unit_step = 20)
     transform!(streakdf, :Streak .=> zscore)
 end
+## Maybe move to constant
+contrasts = Dict(
+    :PokeInStreak => StandardizedPredictors.Center(1),
+    :Num_Rewards => StandardizedPredictors.Center(0),
+    :AfterLast => StandardizedPredictors.Center(0),
+    :Streak_zscore => StandardizedPredictors.Center(1),
+    :LogOut_zscore => StandardizedPredictors.Center(0),
+    :Age => DummyCoding(; base = "Adults"),
+    :Virus => DummyCoding(; base = "tdTomato"),
+    :Sex => DummyCoding(; base = "M"),
+    :MouseID => Grouping())
+
 open_html_table(FLPDevelopment.summarydf(Age_s,Age_p))
 open_html_table(FLPDevelopment.summarydf(Cas_s,Cas_p))

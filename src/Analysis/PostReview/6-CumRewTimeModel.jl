@@ -1,15 +1,4 @@
 include(joinpath(pwd(),"src","Analysis","Filters.jl"))
-##
-contrasts = Dict(
-    :PokeInStreak => StandardizedPredictors.Center(1),
-    :Num_Rewards => StandardizedPredictors.Center(1),
-    :AfterLast => StandardizedPredictors.Center(0),
-    :Streak_zscore => StandardizedPredictors.Center(1),
-    :LogOut_zscore => StandardizedPredictors.Center(0),
-    :CumReward => StandardizedPredictors.Center(1),
-    :Age => DummyCoding(; base = "Adults"),
-    :Virus => DummyCoding(; base = "tdTomato"),
-    :MouseID => Grouping())
 ##############################
 Age_CR_verb = @formula(Leave ~ 1 + Streak_zscore*Age + LogOut_zscore*Age + CumReward*Age +
     (1|MouseID)+(Streak_zscore|MouseID)+(LogOut_zscore|MouseID)+(CumReward|MouseID));

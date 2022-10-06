@@ -104,3 +104,34 @@ function bootstrapdf(df, mdl; grouping = nothing, n = 100)
     transform!(bootdf, [:coef, :interval] => ByRow((c,e) -> (c -e[1], e[2]-c)) => :err)
     return bootdf
 end
+
+"""
+    `peaksdf(df,var;group = nothing)`
+    performs a KDE of the vector 'var, finds the peaks
+    and saves it in a dataframes to store as csv
+"""
+
+function peaksdf(df,var;group = nothing, flat = true)
+    isnothing(group) ? (df0 = df) : (df0 = groupby(df,group))
+    df1 = combine(df0, var => kde => :KDE)
+    transform!(df1, :KDE => ByRow(y -> findmaxima(y.density)) => [:Pos,:Dens])
+    transform!(df1,[:KDE, :Pos] => ByRow((y,p) -> y.x[p]) => :Val)
+    if flat
+        df2 = flatten(df1,[:Pos,:Dens,:Val])[:,Not(:KDE)]
+    else
+        df2 = transform(df1,:Pos => ByRow(length) => :Count)[:,Not(:KDE)]
+    end
+    return df2
+end
+
+function outliersdf(df,var;group = nothing)
+    g = isnothing(group) ? [:Mice] : vcat(group,:MouseID)
+    micepeaks = FLPDevelopment.peaksdf(df,var; group = g, flat = false)
+    k_density = kde(df[:,var])
+    transform!(micepeaks, :Val => ByRow(x -> map(c-> pdf(k_density,c),x)) => :p)
+    joint_p(v) = length(v) == 1 ? v[1] : sum(v) - prod(v)
+    # transform!(micepeaks, :p => ByRow(x->sum(x) - *(vcat(1.00,x)...)) => :p_sum)
+    transform!(micepeaks, :p => ByRow(joint_p) => :p_union)
+    transform!(micepeaks, :p_union => ByRow(x -> x<0.05) => :Outliers)
+    return micepeaks
+end

@@ -3,7 +3,7 @@ module FLPDevelopment
 using Reexport
 @reexport using FLPprocess, DataFrames, CSV, Dates, CategoricalArrays
 @reexport using StatsBase, HypothesisTests, Bootstrap, MixedModels, Random, Survival, StandardizedPredictors
-@reexport using StatsPlots, StatsPlots.PlotMeasures, LaTeXStrings, KernelDensity
+@reexport using StatsPlots, StatsPlots.PlotMeasures, LaTeXStrings, KernelDensity, Peaks
 import Statistics: median, std
 # import GLM: lm
 
@@ -20,7 +20,7 @@ export first_females_group, second_females_group
 export median, std
 export frequency, fraction_true, bin_axis, AIC_test
 export session_plot, maintitle!
-export individual_summary, group_summary, bootstrapdf
+export individual_summary, group_summary, bootstrapdf, peaksdf, outliersdf
 export function_analysis, survivalrate_algorythm, cumulative_algorythm, hazardrate_algorythm, mediansurvival_analysis
 export incorrect_fraction, median_ci_scatter, plot_xy
 export add_bar!, add_info!, Difference

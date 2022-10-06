@@ -1,14 +1,4 @@
 include(joinpath(pwd(),"src","Analysis","Filters.jl"))
-##
-contrasts = Dict(
-    :PokeInStreak => StandardizedPredictors.Center(1),
-    :Num_Rewards => StandardizedPredictors.Center(0),
-    :AfterLast => StandardizedPredictors.Center(0),
-    :Streak_zscore => StandardizedPredictors.Center(1),
-    :LogOut_zscore => StandardizedPredictors.Center(0),
-    :Age => DummyCoding(; base = "Adults"),
-    :Virus => DummyCoding(; base = "tdTomato"),
-    :MouseID => Grouping())
 ## Test if interaction has more explanatory power
 f_add_SB_Age = @formula(AfterLast ~ 1 + Num_Rewards+Age +
     (1|MouseID) + (Num_Rewards|MouseID));
