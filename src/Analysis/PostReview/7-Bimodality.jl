@@ -9,7 +9,7 @@ c = [x == "Adults" ? 1 : 2 for x in Age_s.Age]
     c = [x == "Adults" ? 13 : 14 for x in Age_s.Age]
     @df Age_s density!(:LogDuration, group = :Age, linestyle = :dot,
     linewidth = 2, color = c, left_margin = -15px, bottom_margin = -15px)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Review", "Age_Bimodality.pdf"))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Review", "Age_Bimodality.png"))
 ##
 c = [x == "tdTomato" ? 1 : 2 for x in Cas_s.Virus]
     @df Cas_s density(:LogDuration, group = :MouseID,
@@ -19,7 +19,7 @@ c = [x == "tdTomato" ? 1 : 2 for x in Cas_s.Virus]
     c = [x == "tdTomato" ? 13 : 14 for x in Cas_s.Virus]
     @df Cas_s density!(:LogDuration, group = :Virus, linestyle = :dot,
     linewidth = 2, color = c, left_margin = -15px, bottom_margin = -15px)
-savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Review", "Cas_Bimodality.pdf"))
+savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Review", "Cas_Bimodality.png"))
 
 ##
 Age_outliers = FLPDevelopment.outliersdf(Age_s, :LogDuration; group = :Age)
