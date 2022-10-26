@@ -78,6 +78,7 @@ contrasts = Dict(
     :AfterLast => StandardizedPredictors.Center(0),
     :Streak_zscore => StandardizedPredictors.Center(1),
     :LogOut_zscore => StandardizedPredictors.Center(0),
+    :CumReward => StandardizedPredictors.Center(1),
     :Age => DummyCoding(; base = "Adults"),
     :Virus => DummyCoding(; base = "tdTomato"),
     :Sex => DummyCoding(; base = "M"),
