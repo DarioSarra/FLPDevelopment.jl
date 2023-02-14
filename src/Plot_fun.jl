@@ -28,15 +28,15 @@
         a Dataframe with the group median and CI of var,
         and a Dataframe with the individual mouse mean value of var
 """
-function Difference(df, group, var; ind_summary = mean, kwargs...)
+function Difference(df, group, var; ind_summary = mean, font_size = 8, kwargs...)
     res_plt, res_group, res_individual = median_ci_scatter(df, group, var; ind_summary = ind_summary, kwargs...)
     res_test = MWU_test(res_individual, group, var)
     res_effect = res_test.U/(res_test.nx * res_test.ny)
     if res_effect < 0.5
         res_effect = ((res_test.nx * res_test.ny) - res_test.U) / (res_test.nx * res_test.ny)
     end
-    e = round(res_effect; digits =2)
-    add_info!(res_plt, res_group, pvalue(res_test), e)
+    e = round(res_effect; digits = 2)
+    add_info!(res_plt, res_group, pvalue(res_test), e; font_size = font_size)
     # xprop = ("Group", xyfont)
     # yprop = (ylabel, xyfont)
     # plot!(xaxis = xprop, yaxis = yprop)
@@ -78,7 +78,7 @@ function median_ci_scatter(df, grouping, var; ind_summary = mean, kwargs...)
     return plt, df2, df1
 end
 
-function add_info!(plt, df, p, e; normality = false)
+function add_info!(plt, df, p, e; normality = false, font_size = 8)
     ylims = Plots.ylims(plt)
     plt_lim = isnothing(ylims) ? maximum(df.Central .+ last.(df.ERR)) : last(ylims) - (last(ylims) - first(ylims))/5
     plt_bot = isnothing(ylims) ? minimum(df.Central .+ first.(df.ERR)) : first(ylims)
@@ -89,14 +89,14 @@ function add_info!(plt, df, p, e; normality = false)
         pval = "N.S."
     else
         round(p, digits = 2) == 0 ? pval = round(p, digits = 3) : pval = round(p, digits = 2)
-        add_effect!(plt, ref+span/2, span/2, e)
+        add_effect!(plt, ref+span/2, span/2, e; font_size = font_size)
     end
     if normality
         pmessage = "T-test, p = $(pval)"
     else
         pmessage = "Mann-Whitney U test, p = $(pval)"
     end
-    add_pvalue!(plt, ref+span/2, span, pmessage)
+    add_pvalue!(plt, ref+span/2, span, pmessage; font_size = font_size)
     isnothing(ylims) && (ylims = (0,plt_lim + 2plt_span))
     yaxis!(ylims = ylims)
     return plt
@@ -108,7 +108,7 @@ function add_bar!(plt, ref, span)
     plot!(plt,[1,2],[ref+span/2,ref+span/2], linecolor = :black)
 end
 
-function add_pvalue!(plt, ref, span, p)
+function add_pvalue!(plt, ref, span, p; font_size = 8)
     if isa(p, String)
         message = p
     else
@@ -116,15 +116,15 @@ function add_pvalue!(plt, ref, span, p)
     end
     annotate!(plt,[(1.5,ref + span,
         Plots.text(message,
-        8, :center))])
+        font_size, :center))])
     return plt
 end
 
-function add_effect!(plt, ref, span, e)
+function add_effect!(plt, ref, span, e; font_size = 8)
     message = "Effect size = $e"
     annotate!(plt,[(1.5,ref - span,
         Plots.text(message,
-        8, :center))])
+        font_size, :center))])
     return plt
 end
 
