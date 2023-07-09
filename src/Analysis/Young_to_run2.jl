@@ -22,8 +22,8 @@ for df in (Age_p, Age_b, Age_s)
     # transform!(df, :Sex => categorical, renamecols=false)
     transform!(df, :Age => categorical => :Age)
     transform!(df, :Sex => categorical => :Sex)
-    gd = groupby(df,:Session)
-    transform!(gd, :Streak => maximum => :Performance)
+    g_df = groupby(df,:Session)
+    transform!(g_df, :Streak => maximum => :Performance)
 end
 
 levels!(Age_p.Age,["Adults", "Juveniles"])

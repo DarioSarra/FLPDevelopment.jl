@@ -19,8 +19,8 @@ for df in (Cas_p, Cas_b, Cas_s)
     # transform!(df, :Virus => categorical, renamecols=false)
     transform!(df, :Virus => categorical => :Virus)
 
-    gd = groupby(df,:Session)
-    transform!(gd, :Streak => maximum => :Performance)
+    g_df = groupby(df,:Session)
+    transform!(g_df, :Streak => maximum => :Performance)
 end
 
 levels!(Cas_p.Virus,["tdTomato", "Caspase"])

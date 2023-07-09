@@ -22,7 +22,7 @@ export frequency, fraction_true, bin_axis, AIC_test
 export session_plot, maintitle!
 export individual_summary, group_summary, bootstrapdf, peaksdf, outliersdf
 export function_analysis, survivalrate_algorythm, cumulative_algorythm, hazardrate_algorythm, mediansurvival_analysis
-export incorrect_fraction, median_ci_scatter, plot_xy
+export incorrect_fraction, median_ci_scatter, plot_xy, pdf_heatmap
 export add_bar!, add_info!, Difference
 export table_coef, table_ranef
 

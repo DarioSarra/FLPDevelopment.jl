@@ -212,3 +212,28 @@ function summarize_xy(df,x,y; group = "none", bin = true, digits = 1, calc = :me
     end
     sort!(df2,grouping)
 end
+"""
+    `pdf_heatmap(df,group,var)`
+    Calculate PDF of 'var' per mouse split by 'group' and returns a heatmap over 100 bins of 'var' 
+"""
+function pdf_heatmap(df,group,var)
+    g = vcat(group,:MouseID)
+    df0 = groupby(df,g)
+    df1 = combine(df0, var => kde => :KDE)
+    r = range(extrema(df[:,var])..., length = 100)
+    r = range(-1,3, length = 100)
+    df2 = transform(df1,:KDE => ByRow(k-> map(c->pdf(k,c), r)) =>:PDF)
+    df3 = sort(df2[:,Not(:KDE)],group)
+    pos_dic = countmap(df3[:,group])
+    samples = map(x->pos_dic[x], levels(df3[:,group]))
+    stepping(x1,x2) = x1*2 +x2/2
+    pos_ticks = accumulate(stepping,samples, init = 0)
+    # return df3, pos_dic, pos_ticks
+    PDFmat = reduce(hcat,df3.PDF)'
+    heatmap(PDFmat,yticks = (pos_ticks, string.(levels(df3[:,group]))),
+        xticks = (collect(range(0,100,length = 5)), ["0","1","10","100","1000"]),
+        xlabel = "Leaving time density (s)",
+        color= :tol_ylorbr
+    )
+    hline!(cumsum(collect(values(pos_dic))).+0.5, color = :black, label ="")
+end

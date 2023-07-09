@@ -124,11 +124,25 @@ function peaksdf(df,var;group = nothing, flat = true)
     return df2
 end
 
+"""
+    `outliersdf(df,var;group = nothing)`
+    1-performs a KDE on the vector 'var' by mouse and group, 
+    2-finds the each KDE peaks and saves it in a dataframes
+    3-calclulate the overall KDE of 'var' not split by group
+    4-for each peak returns the p value that it belongs to the 'var' distribution
+    5-in case of multiple peaks returns the joint probability that they blong to the 'var' distribution
+    6-verify if any animal has a joint probability lower than 5%
+"""
+
 function outliersdf(df,var;group = nothing)
-    g = isnothing(group) ? [:Mice] : vcat(group,:MouseID)
+    g = isnothing(group) ? [:MouseID] : vcat(group,:MouseID)
     micepeaks = FLPDevelopment.peaksdf(df,var; group = g, flat = false)
     k_density = kde(df[:,var])
-    transform!(micepeaks, :Val => ByRow(x -> map(c-> pdf(k_density,c),x)) => :p)
+    transform!(micepeaks, :Val => ByRow(x -> 
+        map(c-> 
+        pdf(k_density,c)#=/(sum(pdf(k_density,range(-1,3,length=100))))=#,
+        x)) 
+        => :p)
     joint_p(v) = length(v) == 1 ? v[1] : sum(v) - prod(v)
     # transform!(micepeaks, :p => ByRow(x->sum(x) - *(vcat(1.00,x)...)) => :p_sum)
     transform!(micepeaks, :p => ByRow(joint_p) => :p_union)
