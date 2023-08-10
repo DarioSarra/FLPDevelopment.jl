@@ -9,7 +9,7 @@ if ispath(pathMac)
 elseif ispath(pathLin)
     path = pathLin
 else
-    error("unknown path")
+    error("unknown path for flipping datasets")
 end
 ##
 Age_d, Age_p, Age_b, Age_s = process_dataset(path)
