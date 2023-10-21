@@ -8,11 +8,7 @@ Age_k = combine(groupby(Age_s,[:Age,:MouseID])) do dd
     diz = countmap(dd.Strategy)
     (Short = diz["Short"]/nrow(dd), Long = diz["Long"]/nrow(dd), Trials = nrow(dd))
 end
-#calculate difference, but per se we don't expect the difference to be equal to 0
-transform!(Age_k, [:Long,:Short] => ByRow((l,s)-> l-s) => :Diff)
-Age_group_fit = AkaikeBimodality(Age_k,:Diff; group = :Age) #add params number
-Age_mouse_fit = AkaikeBimodality(Age_s,:LogDuration; group = [:Age,:MouseID])
-combine(groupby(Age_mouse_fit,:Age), [:Unimodal_AICc, :Bimodal_AICc] => ((u,b) -> sum(b.<u)) => :Bimodals)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission2023","SFig3","B_Age_Strategy.csv"), select(Age_k, Not([:Trials])))
 ## Fisher Exact test
 transform!(Age_s, :Strategy => ByRow(x -> x == "Long") => :Long)
 Age_f = combine(groupby(Age_s,:Age)) do dd0
@@ -34,12 +30,9 @@ Age_f = combine(groupby(Age_s,:Age)) do dd0
     return dd2
 end
 Age_f[!,:Outliers] = Age_f.P .< 0.05
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission2023","SFig3","B_Age_Fisher_test.csv"), Age_f)
 Age_f_grouped = filter(r->r.Outliers,Age_f)
 open_html_table(Age_f)
-##
-combine(groupby(Age_k,:Age), :Diff => (x -> compareGMMs(Vector(x))) => :P_single)
-Age_mouse_fit = combine(groupby(Age_s,[:MouseID,:Age]), :LogDuration => (x -> compareGMMs(Vector(x))) => :P_single)
-combine(groupby(Age_mouse_fit,:Age), :P_single => (x -> sum(x.<0.05)) => :Bimodals)
 ## Age Plots
 #adjust colors
 control_c, manipulation_c = Plots.theme_palette(:auto)[13], Plots.theme_palette(:auto)[14]
@@ -68,6 +61,8 @@ Age_k[!,:col] = [x == "Adults" ? 13 : 14 for x in  Age_k.Age]
     title = "Age manipulation"
 )
 savefig(joinpath(replace(path,basename(path)=>""),"Development_Figures","Review", "Age_ClusteredGroup.png"))
+
+
 ## Caspase
 kcluster_df!(Cas_s,2,:LogDuration)
 categorise_kclusters!(Cas_s, :LogDuration, :Assignment, ["Short", "Long"]; new_name = :Strategy)
@@ -76,11 +71,7 @@ Cas_k = combine(groupby(Cas_s,[:Virus,:MouseID])) do dd
     diz = countmap(dd.Strategy)
     (Short = diz["Short"]/nrow(dd), Long = diz["Long"]/nrow(dd), Trials = nrow(dd))
 end
-#calculate difference, but per se we don't expect the difference to be equal to 0
-transform!(Cas_k, [:Long,:Short] => ByRow((l,s)-> l-s) => :Diff)
-Cas_group_fit = AkaikeBimodality(Cas_k,:Diff; group = :Virus) #add params number
-Cas_mouse_fit = AkaikeBimodality(Cas_s,:LogDuration; group = [:Virus,:MouseID])
-combine(groupby(Cas_mouse_fit,:Virus), [:Unimodal_AICc, :Bimodal_AICc] => ((u,b) -> sum(b.<u)) => :Bimodals)
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission2023","SFig3","B_Cas_Strategy.csv"), select(Cas_k, Not([:Trials])))
 ## Fisher Exact test
 transform!(Cas_s, :Strategy => ByRow(x -> x == "Long") => :Long)
 Cas_f = combine(groupby(Cas_s,:Virus)) do dd0
@@ -102,6 +93,7 @@ Cas_f = combine(groupby(Cas_s,:Virus)) do dd0
     return dd2
 end
 Cas_f[!,:Outliers] = Cas_f.P .< 0.05
+CSV.write(joinpath(replace(path,basename(path)=>""),"Development_Figures","Submission2023","SFig3","B_Cas_Fisher.csv"), Cas_f)
 Cas_f_grouped = filter(r->r.Outliers,Cas_f)
 combine(groupby(Cas_f,:Virus), :Outliers => sum => :Outliers)
 open_html_table(Cas_f)
